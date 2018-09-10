@@ -47,9 +47,16 @@ function pop() {
 var lua = [];
 document.getElementById("arr").innerHTML = lua;
 function addarr() {
-	var x= document.getElementById('them').value;
+	var x= Number(document.getElementById('them').value);
     lua.push(x);
     
 	document.getElementById("arr").innerHTML =lua;
-	
+	document.getElementById("dem").innerHTML = lua.length;
 }   
+
+function getSum(total, num) {
+    return total + num;
+}
+function myFunction(item) {
+    document.getElementById("tongkg").innerHTML = lua.reduce(getSum);
+}

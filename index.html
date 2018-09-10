@@ -52,15 +52,15 @@
       <tr>
         <th>Tổng khối lượng lúa (Kg)</th>
         <th>Số tiền bán ra</th>
-        <th>Kết quả Cộng</th>
-        <th>Kết quả Trừ</th>
-        <th>Kết quả Nhân</th>
-        <th>Kết quả Chia</th>
+        <th>Số tiền thu được</th>
+        <th>Số giạ/công</th>
+        <th>Kết quả trúng mùa</th>
+        <th>Vé số nên mua</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td id="1so"></td>
+        <td id="tongkg"></td>
         <td id="2so"></td>
         <td id="kqc"></td>
         <td id="kqt"></td>
@@ -79,24 +79,27 @@
       <div class="col-sm-6">
     <div class="form-group">
       <label for="email">Số kg từng bao:</label><label id="kt1" style="color: red;font-size: 20px"></label>
-      <input type="text" class="form-control" id="them" placeholder="Nhập số thứ nhất" required="Không bỏ trống" >
+      <input type="text" class="form-control" id="them" placeholder="Nhập số kí từng bao" required="Không bỏ trống" >
     </div>
     
-    <button class="btn btn-success" onclick="addarr()" type="button">Nhập</button>
-
+    
+    <button type="reset" class="btn btn-info">Tính lại</button>
+    <button class="btn btn-danger" onclick="addarr()" type="button">Nhập</button>
+    <br>
     <br>
     <h6 id="arr"></h6>
     <br>
+    <h6>Số lượng bao lúa đã nhập:</h6><button class="btn btn-dark" id="dem"></button>
   </div>
     <div class="col-sm-6">
   
      
     <div class="form-group">
         <label for="pwd">Số tiền bán ra:</label><label id="kt2" style="color: red; font-size: 20px"></label>
-        <input type="text" class="form-control" id="so2" placeholder="Nhập số thứ hai" required="Không bỏ trống" >
+        <input type="text" class="form-control" id="tien" placeholder="Nhập số tiền bán" required="Không bỏ trống" >
       </div>
-    <button class="btn btn-success" onclick="tinh()" type="button">Tính</button>
-    <button type="reset" class="btn btn-danger">Tính lại</button>
+    <button class="btn btn-success" onclick="myFunction()" type="button">Tính Tiền</button>
+    
   </div>
 </div>
   </form>
