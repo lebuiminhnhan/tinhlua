@@ -44,7 +44,7 @@ function pop() {
     }
     document.getElementById("hello").innerHTML = txt;
 }
-var lua = ["0"];
+var lua = [];
 document.getElementById("arr").innerHTML = lua;
 function addarr() {
 	var x= document.getElementById('them').value;

@@ -72,29 +72,37 @@
  </div>
 				 
       <h2>Nhập khối lượng lúa</h2>
-      <div class="row">
-        <div class="col-sm-6">
+      
   <form>
+      <div class="row">
+        
+      <div class="col-sm-6">
     <div class="form-group">
       <label for="email">Số kg từng bao:</label><label id="kt1" style="color: red;font-size: 20px"></label>
       <input type="text" class="form-control" id="them" placeholder="Nhập số thứ nhất" required="Không bỏ trống" >
     </div>
     
     <button class="btn btn-success" onclick="addarr()" type="button">Nhập</button>
+
     <br>
+    <h6 id="arr"></h6>
     <br>
+  </div>
+    <div class="col-sm-6">
+  
+     
     <div class="form-group">
         <label for="pwd">Số tiền bán ra:</label><label id="kt2" style="color: red; font-size: 20px"></label>
         <input type="text" class="form-control" id="so2" placeholder="Nhập số thứ hai" required="Không bỏ trống" >
       </div>
     <button class="btn btn-success" onclick="tinh()" type="button">Tính</button>
     <button type="reset" class="btn btn-danger">Tính lại</button>
-  </form>
-</div>
-<div class="col-sm-6">
-  <h6 id="arr"></h6>
   </div>
 </div>
+  </form>
+
+
+
   <hr>
 
 
