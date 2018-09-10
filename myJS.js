@@ -27,11 +27,6 @@ function tinh() {
 	document.getElementById('kqch').innerHTML=kqch;
 }
 
-function rannum() {
-	document.getElementById("xoso").innerHTML =
-Math.floor(Math.random() * 1000000);
-}
-
 
 function pop() {
 	var txt;
@@ -58,5 +53,66 @@ function getSum(total, num) {
     return total + num;
 }
 function myFunction(item) {
+    var a,b;
     document.getElementById("tongkg").innerHTML = lua.reduce(getSum);
+    a= Number(document.getElementById("tongkg").innerHTML = lua.reduce(getSum));
+    b=Number (document.getElementById("sotien").value);
+    if (isNaN(a)  || a < -9999999999 || a > 9999999999 || a == " ") {
+        text1 = "Chỉ nhập số";
+    } else {
+        text1 = " OK";
+    }
+    if (isNaN(b)  || b < -9999999999 || b > 9999999999 || b == " ") {
+        text2 = "Chỉ nhập số";
+    } else {
+        text2 = "OK";
+    }
+
+    var kqn= a * b;
+    var sgc= a/20;
+    if(sgc>30)
+    {
+        if(kqn>3500000)
+        {
+            text3 = "Trúng mùa, được giá";
+            document.getElementById("kq").innerHTML=text3;
+        }
+        else
+        {
+            text4="Lúa mất giá";
+            document.getElementById("kq").innerHTML=text4;
+        }
+    }
+    else
+    {
+        text5="Lúa thất";
+        document.getElementById("kq").innerHTML=text5;
+    }
+    document.getElementById('kqn').innerHTML=kqn;
+    document.getElementById("kt1").innerHTML = text1;
+    document.getElementById("kt2").innerHTML = text2;
+    document.getElementById("tien").innerHTML=b;
+    document.getElementById("gc").innerHTML=sgc;
+    document.getElementById("veso").innerHTML =
+Math.floor(Math.random() * 1000000);
 }
+function reverseNumber(td) {
+    return [].map.call(td, function(x) {
+       return x;
+     }).reverse().join(''); 
+   }
+ function splitInDots(td) {
+     var value = td.value,
+         plain = plainNumber(value),
+         reversed = reverseNumber(plain),
+         reversedWithDots = reversed.match(/.{1,3}/g).join('.'),
+         normal = reverseNumber(reversedWithDots);
+     
+     console.log(plain,reversed, reversedWithDots, normal);
+     td.value = normal;
+   }
+ function plainNumber(number) {
+     return number.split('.').join('');
+ }
+
+ 
