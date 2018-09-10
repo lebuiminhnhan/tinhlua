@@ -48,7 +48,11 @@ function addarr() {
 	document.getElementById("arr").innerHTML =lua;
 	document.getElementById("dem").innerHTML = lua.length;
 }   
-
+function rearr() {
+    lua.pop();
+    document.getElementById("dem").innerHTML = lua.length;
+    document.getElementById("arr").innerHTML = lua;
+}
 function getSum(total, num) {
     return total + num;
 }
