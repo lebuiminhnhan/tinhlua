@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+
 <head>
-	<title>Tính tiền lúa</title>
+  <title>Tính tiền lúa</title>
+  <link rel="shortcut icon" href="icon.png">
 	<meta charset="utf-8">
   	<meta name="viewport" content="width=device-width, initial-scale=1">
   	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
@@ -14,46 +15,99 @@
 <body>
 	<div class="container">
 	
-	
-  <hr>
-  <div class="row">
-    <div class="col-sm-4">
-      <h6 id="info1"></h6>
-      <h6 id="info2"></h6>
-      <h6 id="dem"></h6>
+		<div class="row">
+		
+			<div class="col-sm-12">
+				<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+  <a class="navbar-brand" href="index.html">Trang chủ</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="collapsibleNavbar">
+    <ul class="navbar-nav">
+     
+      <li class="nav-item">
+        <a class="nav-link" href="https://lebuiminhnhan.github.io/blog/">Đến Blog của Nhẫn</a>
+      </li>
+      <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Chơi game</a>
+    <div class="dropdown-menu">
+      <a class="dropdown-item" href="http://uncrush.ml/game.html">2048</a>
+      <a class="dropdown-item" href="http://uncrush.ml/game2.html">Lục giác</a>
+      
     </div>
-    <div class="col-sm-4">
-      <h6>Mảng</h6>
-      <button class="btn-default" onclick="addarr()">Thêm</button>
-      <input type="text" id="them">
-      <h6 id="arr"></h6>
-       <h6 id="demarr"></h6>
+  </li>
+    </ul>
+  </div>  
+</nav>
+			</div>
     </div>
-    <div class="col-sm-4">
-      <h1 id="xoso"></h1>
+	<div class="col-sm-12">
+   <button class="btn btn-danger" onclick="pop()"> <h4 id="hello">Nhập tên của bạn</h4></button>
+	</div>
+			<div class="col-sm-12">
+        <div class="table-responsive">
+       <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Tổng khối lượng lúa (Kg)</th>
+        <th>Số tiền bán ra</th>
+        <th>Kết quả Cộng</th>
+        <th>Kết quả Trừ</th>
+        <th>Kết quả Nhân</th>
+        <th>Kết quả Chia</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td id="1so"></td>
+        <td id="2so"></td>
+        <td id="kqc"></td>
+        <td id="kqt"></td>
+        <td id="kqn"></td>
+        <td id="kqch"></td>
+      </tr>
+    </tbody>
+  </table>
+ </div>
+				 
+      <h2>Nhập khối lượng lúa</h2>
+      <div class="row">
+        <div class="col-sm-6">
+  <form>
+    <div class="form-group">
+      <label for="email">Số kg từng bao:</label><label id="kt1" style="color: red;font-size: 20px"></label>
+      <input type="text" class="form-control" id="them" placeholder="Nhập số thứ nhất" required="Không bỏ trống" >
     </div>
+    
+    <button class="btn btn-success" onclick="addarr()" type="button">Nhập</button>
+    <br>
+    <br>
+    <div class="form-group">
+        <label for="pwd">Số tiền bán ra:</label><label id="kt2" style="color: red; font-size: 20px"></label>
+        <input type="text" class="form-control" id="so2" placeholder="Nhập số thứ hai" required="Không bỏ trống" >
+      </div>
+    <button class="btn btn-success" onclick="tinh()" type="button">Tính</button>
+    <button type="reset" class="btn btn-danger">Tính lại</button>
+  </form>
+</div>
+<div class="col-sm-6">
+  <h6 id="arr"></h6>
   </div>
+</div>
   <hr>
-  <hr>
-  <div class="row">
-    <div class="col-sm-4">
-      <h4 id="hour"></h4>
-    </div>
-    <div class="col-sm-4">
-      <h4 id="ex"></h4>
-    </div>
-    <div class="col-sm-4">
-      <p>Nhập hai số vào ô trên để kiểm tra</p>
-      <button onclick="ss()">click</button>
-      <h5 id="e"></h5>
-      <h5 id="e1"></h5>
-    </div>
+
+
+
+
+			
+		</div>
   </div>
   <hr>
 		<div class="col-sm-12">
 			<div style="display: inline;">
-        <p style="float: left;" id="time"></p>
-				<p style="float: right;">Groot Le | &reg;2018 </p>
+        
+				<p style="float: right;">Lê Bùi Minh Nhẫn | &reg; 2018 </p>
 		</div>
 		</div>
 	</div>
