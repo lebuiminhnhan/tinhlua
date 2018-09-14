@@ -1,33 +1,5 @@
 
-function tinh() {
-	var a,b,kqc,kqt,kqn,kqch,text1,text2;
- 	a = Number (document.getElementById("so1").value);
-	b = Number (document.getElementById("so2").value);
-	kqc= a + b;
-	kqt= a - b;
-	kqn= a * b;
-	kqch= a / b;
-	if (isNaN(a)  || a < -9999999999 || a > 9999999999 || a == " ") {
-        text1 = "Chỉ nhập số";
-    } else {
-        text1 = " OK";
-    }
-    if (isNaN(b)  || b < -9999999999 || b > 9999999999 || b == " ") {
-        text2 = "Chỉ nhập số";
-    } else {
-        text2 = "OK";
-    }
-    document.getElementById("kt1").innerHTML = text1;
-    document.getElementById("kt2").innerHTML = text2;
-	document.getElementById('1so').innerHTML=a;
-	document.getElementById('2so').innerHTML=b;
-	document.getElementById('kqc').innerHTML=kqc;
-	document.getElementById('kqt').innerHTML=kqt;
-	document.getElementById('kqn').innerHTML=kqn;
-	document.getElementById('kqch').innerHTML=kqch;
-}
-
-
+//hàm popup đổi tên
 function pop() {
 	var txt;
     var person = prompt("Mời bạn nhập tên:", "Groot Le");
@@ -39,6 +11,7 @@ function pop() {
     }
     document.getElementById("hello").innerHTML = txt;
 }
+// tạo marnng lưu số kg lúa
 var lua = [];
 document.getElementById("arr").innerHTML = lua;
 function addarr() {
@@ -53,9 +26,11 @@ function rearr() {
     document.getElementById("dem").innerHTML = lua.length;
     document.getElementById("arr").innerHTML = lua;
 }
+// tính tổng kg lúa
 function getSum(total, num) {
     return total + num;
 }
+// tính
 function myFunction(item) {
     var a,b;
     document.getElementById("tongkg").innerHTML = lua.reduce(getSum).toFixed(2);
@@ -72,7 +47,7 @@ function myFunction(item) {
         text2 = "OK";
     }
 
-    var kqn= (a * b);
+    var kqn= (a * b).toFixed(0);
     var sgc= (a/20).toFixed(2);
     if(sgc>30)
     {
@@ -92,6 +67,8 @@ function myFunction(item) {
         text5="Lúa thất";
         document.getElementById("kq").innerHTML=text5;
     }
+    
+    document.getElementById('doctien').innerHTML=DOCSO.doc(kqn) + " đồng.";
     document.getElementById('kqn').innerHTML=kqn;
     document.getElementById("kt1").innerHTML = text1;
     document.getElementById("kt2").innerHTML = text2;
@@ -119,4 +96,4 @@ function reverseNumber(td) {
      return number.split('.').join('');
  }
 
- 
+ var DOCSO=function(){var t=["không","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"],r=function(r,n){var o="",a=Math.floor(r/10),e=r%10;return a>1?(o=" "+t[a]+" mươi",1==e&&(o+=" mốt")):1==a?(o=" mười",1==e&&(o+=" một")):n&&e>0&&(o=" lẻ"),5==e&&a>=1?o+=" lăm":4==e&&a>=1?o+=" tư":(e>1||1==e&&0==a)&&(o+=" "+t[e]),o},n=function(n,o){var a="",e=Math.floor(n/100),n=n%100;return o||e>0?(a=" "+t[e]+" trăm",a+=r(n,!0)):a=r(n,!1),a},o=function(t,r){var o="",a=Math.floor(t/1e6),t=t%1e6;a>0&&(o=n(a,r)+" triệu",r=!0);var e=Math.floor(t/1e3),t=t%1e3;return e>0&&(o+=n(e,r)+" ngàn",r=!0),t>0&&(o+=n(t,r)),o};return{doc:function(r){if(0==r)return t[0];var n="",a="";do ty=r%1e9,r=Math.floor(r/1e9),n=r>0?o(ty,!0)+a+n:o(ty,!1)+a+n,a=" tỷ";while(r>0);return n.trim()}}}();
