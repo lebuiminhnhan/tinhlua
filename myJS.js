@@ -72,8 +72,8 @@ function myFunction(item) {
         text2 = "OK";
     }
 
-    var kqn= a * b;
-    var sgc= a/20;
+    var kqn= (a * b).toFixed(2);
+    var sgc= (a/20).toFixed(2);
     if(sgc>30)
     {
         if(kqn>3500000)
