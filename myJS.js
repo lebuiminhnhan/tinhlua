@@ -58,7 +58,7 @@ function getSum(total, num) {
 }
 function myFunction(item) {
     var a,b;
-    document.getElementById("tongkg").innerHTML = lua.reduce(getSum);
+    document.getElementById("tongkg").innerHTML = lua.reduce(getSum).toFixed(2);
     a= Number(document.getElementById("tongkg").innerHTML = lua.reduce(getSum));
     b=Number (document.getElementById("sotien").value);
     if (isNaN(a)  || a < -9999999999 || a > 9999999999 || a == " ") {
