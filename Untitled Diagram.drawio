@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2024-05-06T03:19:15.087Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" etag="BfhoUzVgiyRAgX5-OnmR" version="24.3.1" type="github">
+<mxfile host="app.diagrams.net" modified="2024-05-06T03:21:05.030Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" etag="z27MFHrZd8BaWUkIPDkw" version="24.3.1" type="github">
   <diagram name="Page-1" id="d0Tqp2KHN8r35ThtvwZ_">
     <mxGraphModel dx="1050" dy="530" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -45,6 +45,27 @@
         </mxCell>
         <mxCell id="86vtfXbRqKo-mEGbgUYN-18" value="" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;rotation=0;direction=south;" vertex="1" parent="1">
           <mxGeometry x="255" y="480" width="15" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-19" value="bàn trang điểm" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="280" y="140" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-20" value="tủ quần áo" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="170" y="425" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-21" value="máy lạnh" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="518.29" y="245" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-22" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="140" width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-23" value="tủ lạnh" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="460" y="140" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-24" value="cửa sổ" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="104.22" y="350" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="86vtfXbRqKo-mEGbgUYN-25" value="nhà tắm/WC" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="164.22" y="510" width="60" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
