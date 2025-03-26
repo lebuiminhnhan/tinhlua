@@ -1,130 +1,64 @@
 <!DOCTYPE html>
-
+<html lang="vi">
 <head>
-  <title>Tính tiền lúa</title>
-  <link rel="shortcut icon" href="icon.png">
-	<meta charset="utf-8">
-  	<meta name="viewport" content="width=device-width, initial-scale=1">
-  	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
-  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-  	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
-  	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
-    
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator CCCD Việt Nam</title>
 </head>
 <body>
-	<div class="container">
-	
-		<div class="row">
-		
-			<div class="col-sm-12">
-				<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-  <a class="navbar-brand" href="index.html">Trang chủ</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="collapse navbar-collapse" id="collapsibleNavbar">
-    <ul class="navbar-nav">
-     
-      <li class="nav-item">
-        <a class="nav-link" href="https://lebuiminhnhan.github.io/blog/">Đến Blog của Nhẫn</a>
-      </li>
-      <li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Chơi game</a>
-    <div class="dropdown-menu">
-      <a class="dropdown-item" href="http://uncrush.ml/game.html">2048</a>
-      <a class="dropdown-item" href="http://uncrush.ml/game2.html">Lục giác</a>
-      
-    </div>
-  </li>
-    </ul>
-  </div>  
-</nav>
-			</div>
-    </div>
-	<div class="col-sm-12">
-   <button class="btn btn-danger" onclick="pop()"> <h4 id="hello">Nhập tên của bạn</h4></button>
-	</div>
-			<div class="col-sm-12">
-        <div class="table-responsive">
-       <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Tổng khối lượng lúa (Kg)</th>
-        <th>Số tiền bán 1kg lúa</th>
-        <th>Số tiền thu được</th>
-        <th>Số giạ lúa</th>
-        <th>Kết quả trúng mùa</th>
-        <th>Vé số nên mua</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td id="tongkg"></td>
-        <td id="tien"></td>
-        <td id="kqn" onkeyup="splitInDots(this)"></td>
-        <td id="gc"></td>
-        <td id="kq"></td>
-        <td id="veso"></td>
-      </tr>
-    </tbody>
-  </table>
- </div>
- <h6 id="doctien"></h6>
-				<br> 
-      <h2>Nhập khối lượng lúa</h2>
-      
-  <form>
-      <div class="row">
-        
-      <div class="col-sm-6">
-    <div class="form-group">
-      <label for="email">Số kg từng bao:</label><label id="kt1" style="color: red;font-size: 20px"></label>
-      <input type="text" class="form-control" id="them" placeholder="Nhập số kí từng bao" required="Không bỏ trống" >
-    </div>
-    
-    
-    <button type="reset" class="btn btn-info">Tính lại</button>
-    <button class="btn btn-primary" onclick="addarr()" type="button">Nhập</button>
-    <br>
-    <br>
-    <h6 id="arr"></h6>
-    <br>
-    <button class="btn btn-danger" onclick="rearr()" type="button">Xóa</button>
-    <br>
-    <h6>Số lượng bao lúa đã nhập:</h6><div class="btn btn-dark" id="dem"></div>
-  </div>
-    <div class="col-sm-6">
-  
-     
-    <div class="form-group">
-        <label for="pwd">Số tiền bán 1 kg lúa:</label><label id="kt2" style="color: red; font-size: 20px"></label>
-        <input type="text" class="form-control" id="sotien" placeholder="Nhập số tiền bán" required="Không bỏ trống" >
-      </div>
-    <button class="btn btn-success" onclick="myFunction()" type="button">Tính Tiền</button>
-    
-  </div>
-</div>
-  </form>
-
-
-
-  <hr>
-
-
-
-
-			
-		</div>
-  </div>
-  <hr>
-		<div class="col-sm-12">
-			<div style="display: inline;">
-        
-				<p style="float: right;">Lê Bùi Minh Nhẫn | &reg; 2018 </p>
-		</div>
-		</div>
-	</div>
-  <script src="myJS.js"></script>
+    <h2>Generator số CCCD Việt Nam</h2>
+    
+    <label for="tinh">Chọn tỉnh:</label>
+    <select id="tinh"></select>
+    <label for="namSinh">Năm sinh:</label>
+    <input type="number" id="namSinh" min="1900" max="2025" value="2000">
+    <label for="gioiTinh">Giới tính:</label>
+    <select id="gioiTinh">
+        <option value="nam">Nam</option>
+        <option value="nu">Nữ</option>
+    </select>
+    <button onclick="generateCCCD()">Tạo CCCD</button>
+    <h3>Số CCCD: <span id="cccd"></span></h3>
+    <script>
+        // Danh sách mã tỉnh theo quy định của Bộ Công An
+        const MA_TINH = {
+            "Hà Nội": "001", "Hà Giang": "002", "Cao Bằng": "004", "Bắc Kạn": "006", "Tuyên Quang": "008",
+            "Lào Cai": "010", "Điện Biên": "011", "Lai Châu": "012", "Sơn La": "014", "Yên Bái": "015",
+            "Hoà Bình": "017", "Thái Nguyên": "019", "Lạng Sơn": "020", "Quảng Ninh": "022", "Bắc Giang": "024",
+            "Phú Thọ": "025", "Vĩnh Phúc": "026", "Bắc Ninh": "027", "Hải Dương": "030", "Hải Phòng": "031",
+            "Hưng Yên": "033", "Thái Bình": "034", "Hà Nam": "035", "Nam Định": "036", "Ninh Bình": "037",
+            "Thanh Hoá": "038", "Nghệ An": "040", "Hà Tĩnh": "042", "Quảng Bình": "044", "Quảng Trị": "045",
+            "Thừa Thiên Huế": "046", "Đà Nẵng": "048", "Quảng Nam": "049", "Quảng Ngãi": "051", "Bình Định": "052",
+            "Phú Yên": "054", "Khánh Hoà": "056", "Ninh Thuận": "058", "Bình Thuận": "060", "Kon Tum": "062",
+            "Gia Lai": "064", "Đắk Lắk": "066", "Đắk Nông": "067", "Lâm Đồng": "068", "Bình Phước": "070",
+            "Tây Ninh": "072", "Bình Dương": "074", "Đồng Nai": "075", "Bà Rịa - Vũng Tàu": "077", "TP. Hồ Chí Minh": "079",
+            "Long An": "080", "Tiền Giang": "082", "Bến Tre": "083", "Trà Vinh": "084", "Vĩnh Long": "086",
+            "Đồng Tháp": "087", "An Giang": "089", "Kiên Giang": "091", "Cần Thơ": "092", "Hậu Giang": "093",
+            "Sóc Trăng": "094", "Bạc Liêu": "095", "Cà Mau": "096"
+        };
+        // Load danh sách tỉnh vào dropdown
+        const tinhSelect = document.getElementById("tinh");
+        for (const [tinh, ma] of Object.entries(MA_TINH)) {
+            let option = document.createElement("option");
+            option.value = ma;
+            option.textContent = tinh;
+            tinhSelect.appendChild(option);
+        }
+        function generateCCCD() {
+            let maTinh = document.getElementById("tinh").value;
+            let namSinh = parseInt(document.getElementById("namSinh").value);
+            let gioiTinh = document.getElementById("gioiTinh").value;
+            // Xác định mã thế kỷ + giới tính
+            let maGTTheKy = (gioiTinh === "nam") ? (namSinh >= 2000 ? "2" : "0") : (namSinh >= 2000 ? "3" : "1");
+            // Lấy 2 số cuối của năm sinh
+            let nam = namSinh.toString().slice(-2);
+            // Random 6 số cuối
+            let soNgauNhien = Math.floor(100000 + Math.random() * 900000);
+            // Kết hợp thành số CCCD
+            let cccd = `${maTinh}${maGTTheKy}${nam}${soNgauNhien}`;
+            // Hiển thị kết quả
+            document.getElementById("cccd").innerText = cccd;
+        }
+    </script>
 </body>
 </html>
