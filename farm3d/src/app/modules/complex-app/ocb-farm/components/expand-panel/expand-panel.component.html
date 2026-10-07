@@ -1,0 +1,154 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="expand-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-arrows-fullscreen me-2 text-success" aria-hidden="true"></i>Mở rộng nông trại
+        </h5>
+        <span class="badge text-bg-success ms-auto me-2" data-testid="expand-balance">
+          <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ balanceLabel() }} Hạt OCB
+        </span>
+        <button type="button" class="btn-close ms-0" aria-label="Đóng khu mở rộng" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3 small">
+          <span class="badge text-bg-light border" data-testid="expand-summary">
+            <i class="bi bi-grid-3x3-gap me-1" aria-hidden="true"></i>Đã mở {{ summary().unlocked }}/{{ summary().total }} vùng đất
+          </span>
+          <span class="text-muted">Vùng đất chỉ mở được theo thứ tự kề với phần nông trại đã mở.</span>
+        </div>
+
+        @if (configMissing() && !summary().allUnlocked) {
+          <div class="alert alert-warning small" role="alert">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+            Chưa tải được bảng giá nên chưa thể mở rộng. Vui lòng tải lại nông trại.
+          </div>
+        }
+
+        @if (summary().allUnlocked) {
+          <div class="text-center py-4" role="status" data-testid="expand-all-unlocked">
+            <i class="bi bi-check2-circle fs-1 text-success d-block mb-2" aria-hidden="true"></i>
+            <div class="fw-semibold">Bạn đã mở hết toàn bộ vùng đất</div>
+            <div class="small text-muted">Không còn vùng đất nào để mở rộng.</div>
+          </div>
+        } @else {
+          <div class="row g-2" role="listbox" aria-label="Danh sách vùng đất đang khoá">
+            @for (plot of plots(); track plot.id) {
+              <div class="col-6 col-md-4">
+                <button
+                  type="button"
+                  class="card h-100 w-100 text-start"
+                  role="option"
+                  [class.border-success]="selectedId() === plot.id"
+                  [class.opacity-75]="plot.block !== null"
+                  [attr.aria-selected]="selectedId() === plot.id"
+                  [attr.data-testid]="'expand-plot-' + plot.id"
+                  (click)="select(plot.id)"
+                >
+                  <div class="card-body p-2">
+                    <div class="d-flex align-items-start gap-2">
+                      <i class="bi bi-lock-fill fs-4 text-secondary" aria-hidden="true"></i>
+                      <div class="flex-grow-1">
+                        <div class="fw-semibold">{{ plot.label }}</div>
+                        <div class="small text-muted">
+                          Đang khoá · {{ plot.cellCount }} ô {{ plot.terrain === 'water' ? 'ao nước' : 'đất' }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                      <span class="badge text-bg-success" data-testid="expand-plot-price">
+                        <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ plot.priceLabel }}
+                      </span>
+                      @switch (plot.block) {
+                        @case (null) {
+                          <span class="badge text-bg-info">
+                            <i class="bi bi-unlock me-1" aria-hidden="true"></i>Có thể mở
+                          </span>
+                        }
+                        @case ('not_adjacent') {
+                          <span class="badge text-bg-secondary" data-testid="expand-plot-not-adjacent">
+                            <i class="bi bi-signpost me-1" aria-hidden="true"></i>
+                            @if (plot.requiredFirstLabel) {
+                              Mở {{ plot.requiredFirstLabel }} trước
+                            } @else {
+                              Chưa kề vùng đã mở
+                            }
+                          </span>
+                        }
+                        @case ('no_price') {
+                          <span class="badge text-bg-warning">Chưa có giá</span>
+                        }
+                      }
+                    </div>
+                    @if (plot.missing > 0) {
+                      <div class="small text-danger mt-1" data-testid="expand-plot-missing">
+                        Thiếu {{ plot.missingLabel }} Hạt OCB
+                      </div>
+                    }
+                  </div>
+                </button>
+              </div>
+            } @empty {
+              <div class="col-12 text-center text-muted py-4">
+                <i class="bi bi-inbox fs-3 d-block mb-1" aria-hidden="true"></i>Chưa có vùng đất nào để mở rộng.
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (!summary().allUnlocked && selected(); as plot) {
+        <div class="modal-footer d-block" data-testid="expand-confirm-area">
+          @if (plot.message) {
+            <div class="alert alert-warning small mb-2" role="alert" data-testid="expand-block-message">
+              <i class="bi bi-info-circle me-1" aria-hidden="true"></i>{{ plot.message }}
+            </div>
+          }
+          @if (expandError()) {
+            <div class="alert alert-danger small mb-2" role="alert" data-testid="expand-error">
+              <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ expandError() }}
+              <div class="mt-1">Vùng đất vẫn đang khoá và số Hạt OCB chưa bị trừ.</div>
+            </div>
+          }
+
+          <div class="d-flex flex-wrap align-items-end gap-2">
+            <div class="me-auto">
+              <div class="fw-semibold">Mở {{ plot.label }} — {{ plot.priceLabel }} Hạt OCB</div>
+              @if (balanceAfter() !== null) {
+                <div class="small text-muted">Số dư sau khi mở: {{ balanceAfter() }} Hạt OCB</div>
+              }
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cancelSelection()">Huỷ</button>
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              data-testid="expand-confirm"
+              [disabled]="confirmDisabled()"
+              [attr.aria-busy]="expanding()"
+              (click)="confirm()"
+            >
+              @if (expanding()) {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              } @else if (expandError()) {
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+              } @else {
+                <i class="bi bi-unlock me-1" aria-hidden="true"></i>
+              }
+              {{ expandError() ? 'Thử lại' : 'Xác nhận mở rộng' }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

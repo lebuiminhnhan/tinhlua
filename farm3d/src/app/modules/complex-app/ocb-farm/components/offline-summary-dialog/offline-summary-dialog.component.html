@@ -1,0 +1,103 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="farm-offline-summary"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-moon-stars me-2 text-success" aria-hidden="true"></i>Trong lúc bạn vắng mặt
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          aria-label="Đóng bảng tổng kết"
+          [disabled]="harvesting()"
+          (click)="close()"
+        ></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="mb-3">
+          Bạn đã rời nông trại
+          <strong data-testid="offline-away">{{ awayLabel() }}</strong>. Vật nuôi và cây trồng đã tạo ra
+          <strong>{{ totalQuantity() }}</strong> sản phẩm đang chờ thu hoạch.
+        </p>
+
+        <ul class="list-group mb-3" aria-label="Sản phẩm đang chờ thu hoạch">
+          @for (row of rows(); track row.key) {
+            <li class="list-group-item d-flex align-items-center gap-2" data-testid="offline-item">
+              <i class="{{ row.icon }} text-success" aria-hidden="true"></i>
+              <span class="flex-grow-1">{{ row.label }}</span>
+              @if (row.capped) {
+                <span class="badge text-bg-warning" title="Có đối tượng đã đạt trần tích lũy">
+                  <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>Đạt trần
+                </span>
+              }
+              <span class="badge text-bg-success rounded-pill fs-6">× {{ row.quantity }}</span>
+            </li>
+          }
+        </ul>
+
+        @if (cappedEntities().length > 0) {
+          <div class="alert alert-warning mb-3" role="note" data-testid="offline-capped">
+            <div class="fw-semibold mb-1">
+              <i class="bi bi-hourglass-bottom me-1" aria-hidden="true"></i>
+              {{ cappedEntities().length }} đối tượng đã đạt mức trần tích lũy
+            </div>
+            <div class="small mb-1">
+              Thời gian vắng mặt vượt quá mức trần không tạo thêm sản phẩm. Hãy thu hoạch thường xuyên hơn.
+            </div>
+            <ul class="small mb-0 ps-3">
+              @for (e of cappedEntities(); track e.id) {
+                <li>{{ e.label }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (rainCycles() > 0) {
+          <p class="small text-muted mb-0">
+            <i class="bi bi-cloud-rain me-1" aria-hidden="true"></i>Trời đã mưa {{ rainCycles() }} lần và tự
+            tưới cây giúp bạn.
+          </p>
+        }
+
+        @if (error(); as err) {
+          <div class="alert alert-danger d-flex align-items-start gap-2 mt-3 mb-0" role="alert" data-testid="offline-error">
+            <i class="bi bi-exclamation-circle mt-1" aria-hidden="true"></i>
+            <div>{{ err }}</div>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" [disabled]="harvesting()" (click)="close()">
+          Để sau
+        </button>
+        <button
+          type="button"
+          class="btn btn-success"
+          data-testid="offline-harvest-all"
+          [disabled]="harvestDisabled()"
+          [attr.aria-busy]="harvesting()"
+          (click)="onHarvestAll()"
+        >
+          @if (harvesting()) {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang thu hoạch...
+          } @else if (error()) {
+            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+          } @else {
+            <i class="bi bi-basket me-1" aria-hidden="true"></i>Thu hoạch toàn bộ
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

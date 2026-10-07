@@ -1,0 +1,200 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="inbox-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-envelope-heart me-2 text-success" aria-hidden="true"></i>Hộp thư nông trại
+        </h5>
+        <button type="button" class="btn-close" aria-label="Đóng hộp thư" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <ul class="nav nav-pills mb-3" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button
+              type="button"
+              class="nav-link"
+              [class.active]="tab() === 'helps'"
+              role="tab"
+              [attr.aria-selected]="tab() === 'helps'"
+              data-testid="inbox-tab-helps"
+              (click)="selectTab('helps')"
+            >
+              <i class="bi bi-hand-thumbs-up me-1" aria-hidden="true"></i>Người đã giúp
+              @if (hasHelps()) {
+                <span class="badge text-bg-light border ms-1">{{ helpRows().length }}</span>
+              }
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              type="button"
+              class="nav-link"
+              [class.active]="tab() === 'greetings'"
+              role="tab"
+              [attr.aria-selected]="tab() === 'greetings'"
+              data-testid="inbox-tab-greetings"
+              (click)="selectTab('greetings')"
+            >
+              <i class="bi bi-chat-heart me-1" aria-hidden="true"></i>Lời chúc
+              @if (hasGreetings()) {
+                <span class="badge text-bg-light border ms-1">{{ greetingRows().length }}</span>
+              }
+            </button>
+          </li>
+        </ul>
+
+        @switch (status()) {
+          @case ('loading') {
+            <div class="text-center text-muted py-5" role="status" aria-live="polite" data-testid="inbox-loading">
+              <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải hộp thư…
+            </div>
+          }
+          @case ('error') {
+            <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2" role="alert" data-testid="inbox-error">
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                Không tải được hộp thư.
+                @if (errorMessage()) {
+                  <span class="small d-block">{{ errorMessage() }}</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-testid="inbox-retry" (click)="retry()">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+              </button>
+            </div>
+          }
+          @default {
+            @if (deleteError(); as err) {
+              <div class="alert alert-danger d-flex align-items-start gap-2 py-2" role="alert" data-testid="inbox-delete-error">
+                <i class="bi bi-exclamation-circle mt-1" aria-hidden="true"></i>
+                <div class="flex-grow-1 small">{{ err }}</div>
+              </div>
+            }
+
+            @if (tab() === 'helps') {
+              @if (!hasHelps()) {
+                <div class="text-center py-4" data-testid="inbox-helps-empty">
+                  <i class="bi bi-inbox fs-1 text-muted" aria-hidden="true"></i>
+                  <p class="fw-semibold mt-2 mb-1">Chưa có ai giúp bạn</p>
+                  <p class="text-muted small mb-0">
+                    Khi đồng nghiệp ghé thăm và tưới cây hoặc cho vật nuôi ăn giúp, họ sẽ xuất hiện ở đây.
+                  </p>
+                </div>
+              } @else {
+                <ul class="list-group" data-testid="inbox-help-list">
+                  @for (row of helpRows(); track row.id) {
+                    <li class="list-group-item d-flex align-items-start gap-2" [class.bg-success-subtle]="row.isNew" data-testid="inbox-help-row">
+                      <i class="{{ row.actionIcon }} fs-5 mt-1" aria-hidden="true"></i>
+                      <div class="flex-grow-1">
+                        <div>
+                          <strong>{{ row.helperName }}</strong> — {{ row.actionLabel }}
+                          @if (row.isNew) {
+                            <span class="badge text-bg-success ms-1">Mới</span>
+                          }
+                        </div>
+                        <time class="small text-muted" [attr.datetime]="row.isoTime">{{ row.timeLabel }}</time>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              }
+            } @else {
+              @if (!hasGreetings()) {
+                <div class="text-center py-4" data-testid="inbox-greetings-empty">
+                  <i class="bi bi-chat-heart fs-1 text-muted" aria-hidden="true"></i>
+                  <p class="fw-semibold mt-2 mb-1">Chưa có lời chúc nào</p>
+                  <p class="text-muted small mb-0">
+                    Lời chúc từ đồng nghiệp ghé thăm nông trại của bạn sẽ hiển thị ở đây.
+                  </p>
+                </div>
+              } @else {
+                <div class="d-flex justify-content-end mb-2">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    data-testid="inbox-clear-all"
+                    [disabled]="clearing()"
+                    (click)="confirmClearAll()"
+                  >
+                    <i class="bi bi-trash3 me-1" aria-hidden="true"></i>Xoá toàn bộ
+                  </button>
+                </div>
+
+                @if (clearConfirming()) {
+                  <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert" data-testid="inbox-clear-confirm">
+                    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                    <div class="flex-grow-1 small">
+                      Xoá toàn bộ {{ greetingRows().length }} lời chúc? Hành động này không thể hoàn tác.
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger"
+                      data-testid="inbox-clear-confirm-yes"
+                      [disabled]="clearing()"
+                      (click)="clearAllGreetings()"
+                    >
+                      @if (clearing()) {
+                        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                      }
+                      Xoá toàn bộ
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      [disabled]="clearing()"
+                      (click)="cancelClearAll()"
+                    >
+                      Huỷ
+                    </button>
+                  </div>
+                }
+
+                <ul class="list-group" data-testid="inbox-greeting-list">
+                  @for (row of greetingRows(); track trackGreeting($index, row)) {
+                    <li class="list-group-item d-flex align-items-start gap-2" [class.bg-success-subtle]="row.isNew" data-testid="inbox-greeting-row">
+                      <i class="bi {{ row.isEmoji ? 'bi-emoji-smile' : 'bi-chat-left-text' }} fs-5 mt-1 text-success" aria-hidden="true"></i>
+                      <div class="flex-grow-1">
+                        <div>
+                          <strong>{{ row.senderName }}</strong>
+                          @if (row.isNew) {
+                            <span class="badge text-bg-success ms-1">Mới</span>
+                          }
+                        </div>
+                        <div class="word-break-all">{{ row.message }}</div>
+                        <time class="small text-muted" [attr.datetime]="row.isoTime">{{ row.timeLabel }}</time>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        [attr.aria-label]="'Xoá lời chúc của ' + row.senderName"
+                        [attr.data-testid]="'inbox-delete-greeting-' + row.id"
+                        [disabled]="deletingId() === row.id"
+                        (click)="deleteGreeting(row.id)"
+                      >
+                        @if (deletingId() === row.id) {
+                          <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                        } @else {
+                          <i class="bi bi-trash3" aria-hidden="true"></i>
+                        }
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            }
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

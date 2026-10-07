@@ -1,0 +1,254 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="shop-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-shop me-2 text-success" aria-hidden="true"></i>Cửa hàng nông trại
+        </h5>
+        <span class="badge text-bg-success ms-auto me-2" data-testid="shop-balance">
+          <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ balanceLabel() }} Hạt OCB
+        </span>
+        <button type="button" class="btn-close ms-0" aria-label="Đóng cửa hàng" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <ul class="nav nav-pills mb-3 gap-1" role="tablist" aria-label="Danh mục cửa hàng">
+          @for (t of tabs; track t.id) {
+            <li class="nav-item" role="presentation">
+              <button
+                type="button"
+                class="nav-link"
+                role="tab"
+                [class.active]="tab() === t.id"
+                [attr.aria-selected]="tab() === t.id"
+                [attr.data-testid]="'shop-tab-' + t.id"
+                (click)="selectTab(t.id)"
+              >
+                <i class="{{ t.icon }} me-1" aria-hidden="true"></i>{{ t.label }}
+              </button>
+            </li>
+          }
+        </ul>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3 small">
+          <span
+            class="badge"
+            [class.text-bg-danger]="limitReached()"
+            [class.text-bg-light]="!limitReached()"
+            [class.border]="!limitReached()"
+            data-testid="shop-group-count"
+          >
+            @switch (tab()) {
+              @case ('animal') { Vật nuôi }
+              @case ('seed') { Cây trồng }
+              @case ('decor') { Trang trí }
+              @case ('boost') { Vật phẩm dùng ngay }
+            }
+            @if (tab() !== 'boost') {
+              : {{ countLabel() }}
+            }
+          </span>
+          <button
+            type="button"
+            class="btn btn-outline-success btn-sm ms-auto order-last"
+            data-testid="shop-random"
+            [disabled]="!canPickRandom() || !canBuy()"
+            title="Chọn ngẫu nhiên một vật phẩm mua được và một ô trống"
+            (click)="pickRandom()"
+          >
+            <i class="bi bi-shuffle me-1" aria-hidden="true"></i>Ngẫu nhiên
+          </button>
+          @if (seasonTheme() && tab() === 'decor') {
+            <span class="badge text-bg-warning">
+              <i class="bi bi-stars me-1" aria-hidden="true"></i>Đang diễn ra: {{ seasonName() || 'Dịp lễ' }}
+            </span>
+          }
+        </div>
+
+        @if (configMissing()) {
+          <div class="alert alert-warning small" role="alert">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+            Chưa tải được bảng giá nên chưa thể mua. Vui lòng tải lại nông trại.
+          </div>
+        }
+        @if (limitReached()) {
+          <div class="alert alert-warning small" role="status" data-testid="shop-limit-alert">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+            Nhóm này đã đạt giới hạn {{ countLabel() }}. Bán bớt để mua thêm; hai nhóm còn lại vẫn mua bình
+            thường.
+          </div>
+        }
+
+        <div class="row g-2" role="listbox" aria-label="Danh sách vật phẩm">
+          @for (item of items(); track item.code) {
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                class="card h-100 w-100 text-start shop-item"
+                role="option"
+                [class.border-success]="selectedCode() === item.code"
+                [class.shop-item-selected]="selectedCode() === item.code"
+                [class.opacity-75]="item.block !== null"
+                [attr.aria-selected]="selectedCode() === item.code"
+                [attr.data-testid]="'shop-item-' + item.code"
+                (click)="selectItem(item.code)"
+              >
+                <div class="card-body p-2">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="{{ item.icon }} fs-3 text-success" aria-hidden="true"></i>
+                    <div class="flex-grow-1 min-w-0">
+                      <div class="fw-semibold">
+                        {{ item.name }}
+                        @if (item.block === 'seniority_locked') {
+                          <i class="bi bi-lock-fill text-secondary ms-1" aria-label="Đang khoá"></i>
+                        }
+                      </div>
+                      <div class="small text-muted">{{ item.note }}</div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-1 mt-2">
+                    <span class="badge text-bg-success">
+                      <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ item.priceLabel }}
+                    </span>
+                    @if (item.growLabel) {
+                      <span class="badge text-bg-light border" title="Tổng thời gian sinh trưởng">
+                        <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>{{ item.growLabel }}
+                      </span>
+                    }
+                    @if (item.cycleLabel) {
+                      <span class="badge text-bg-light border" title="Chu kỳ tạo sản phẩm">
+                        <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>{{ item.cycleLabel }}
+                      </span>
+                    }
+                    @if (item.seasonal) {
+                      <span class="badge text-bg-warning" data-testid="shop-seasonal-label">
+                        <i class="bi bi-stars me-1" aria-hidden="true"></i>Chỉ bán dịp {{ item.seasonName || 'lễ' }}
+                      </span>
+                    }
+                    @if (item.requiredLabel) {
+                      @if (item.unlockedBySeniority) {
+                        <span class="badge text-bg-info" data-testid="shop-seniority-unlocked">
+                          <i class="bi bi-award me-1" aria-hidden="true"></i>Mở khoá nhờ thâm niên {{ item.requiredLabel }}
+                        </span>
+                      } @else {
+                        <span class="badge text-bg-secondary" data-testid="shop-seniority-locked">
+                          <i class="bi bi-lock me-1" aria-hidden="true"></i>Cần thâm niên {{ item.requiredLabel }}
+                        </span>
+                      }
+                    }
+                  </div>
+
+                  @if (item.block === 'insufficient_seeds') {
+                    <div class="small text-danger mt-1">Thiếu {{ item.missing }} Hạt OCB</div>
+                  }
+                </div>
+              </button>
+            </div>
+          } @empty {
+            <div class="col-12 text-center text-muted py-4">
+              <i class="bi bi-inbox fs-3 d-block mb-1" aria-hidden="true"></i>Chưa có vật phẩm nào trong mục này.
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (selected(); as item) {
+        <div class="modal-footer d-block" data-testid="shop-confirm-area">
+          @if (item.message) {
+            <div class="alert alert-warning small mb-2" role="alert" data-testid="shop-block-message">
+              <i class="bi bi-info-circle me-1" aria-hidden="true"></i>{{ item.message }}
+            </div>
+          }
+          @if (buyError()) {
+            <div class="alert alert-danger small mb-2" role="alert" data-testid="shop-buy-error">
+              <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ buyError() }}
+            </div>
+          }
+
+          <div class="d-flex flex-wrap align-items-end gap-2">
+            <div class="me-auto">
+              <div class="fw-semibold">{{ item.name }} — {{ item.priceLabel }} Hạt OCB</div>
+              @if (balanceAfter() !== null && item.block === null) {
+                <div class="small text-muted">Số dư sau khi mua: {{ balanceAfter() }} Hạt OCB</div>
+              }
+            </div>
+
+            @if (isBoost()) {
+              @if (targets().length > 0) {
+                <div>
+                  <label class="form-label small mb-1" for="shop-target-select">
+                    {{ item.code === 'growth_potion' ? 'Dùng cho vật nuôi' : 'Dùng cho cây' }}
+                  </label>
+                  <select
+                    #targetSelect
+                    id="shop-target-select"
+                    class="form-select form-select-sm"
+                    data-testid="shop-target-select"
+                    [value]="target() ?? ''"
+                    (change)="chooseTarget(targetSelect.value)"
+                  >
+                    @for (t of targets(); track t.id) {
+                      <option [value]="t.id" [selected]="t.id === target()">{{ t.label }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            } @else if (cells().length > 0) {
+              <div>
+                <label class="form-label small mb-1" for="shop-cell-select">
+                  {{ item.terrain === 'water' ? 'Ô ao nước' : 'Ô đất' }} để đặt
+                </label>
+                <select
+                  #cellSelect
+                  id="shop-cell-select"
+                  class="form-select form-select-sm"
+                  data-testid="shop-cell-select"
+                  [value]="cell() ?? ''"
+                  (change)="chooseCell(cellSelect.value)"
+                >
+                  @for (c of cells(); track c) {
+                    <option [value]="c" [selected]="c === cell()">Ô {{ c }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cancelSelection()">
+              Huỷ
+            </button>
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              data-testid="shop-confirm"
+              [disabled]="confirmDisabled()"
+              [attr.aria-busy]="buying()"
+              (click)="confirm()"
+            >
+              @if (buying()) {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              } @else {
+                <i class="bi bi-bag-check me-1" aria-hidden="true"></i>
+              }
+              Xác nhận mua
+            </button>
+          </div>
+          @if (preferredInvalid() && cells().length > 0) {
+            <div class="small text-muted mt-1">
+              Ô vừa chọn trên nông trại không phù hợp với {{ item.name }}, đã chọn ô trống khác.
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

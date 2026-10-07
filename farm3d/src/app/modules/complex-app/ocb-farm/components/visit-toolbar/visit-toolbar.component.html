@@ -1,0 +1,177 @@
+<div
+  class="visit-toolbar position-absolute top-0 start-0 end-0 d-flex flex-column gap-2 p-2"
+  data-testid="visit-toolbar"
+  role="region"
+  aria-label="Chế độ ghé thăm nông trại"
+>
+  <!-- Nhãn chế độ ghé thăm: hiển thị liên tục trong suốt thời gian xem (US-26). -->
+  <div
+    class="alert alert-info d-flex flex-wrap align-items-center gap-2 py-2 px-3 mb-0 shadow-sm"
+    [class.visit-anniversary]="target().is_anniversary_today"
+    role="status"
+    aria-live="polite"
+    data-testid="visit-mode-banner"
+  >
+    <i class="bi bi-binoculars-fill" aria-hidden="true"></i>
+    <span class="fw-semibold">Đang ghé thăm nông trại của {{ target().full_name }}</span>
+    @if (target().department_name) {
+      <span class="text-muted small">({{ target().department_name }})</span>
+    }
+    <span class="ms-auto"></span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-testid="visit-exit" (click)="exit()">
+      <i class="bi bi-box-arrow-left me-1" aria-hidden="true"></i>Về nông trại của tôi
+    </button>
+  </div>
+
+  <!-- Hiệu ứng lễ hội khi chủ nông trại đang trong ngày kỷ niệm (US-8). -->
+  @if (target().is_anniversary_today) {
+    <div
+      class="alert alert-warning visit-anniversary-banner d-flex align-items-center gap-2 py-2 px-3 mb-0 shadow-sm"
+      role="status"
+      aria-live="polite"
+      data-testid="visit-anniversary-banner"
+    >
+      <i class="bi bi-stars fs-5" aria-hidden="true"></i>
+      <span class="fw-semibold">{{ anniversaryLabel() }}</span>
+      <span class="visit-confetti" aria-hidden="true">🎉🎊🎉🎊🎉</span>
+    </div>
+  }
+
+  @if (!hasFarm()) {
+    <!-- Đồng nghiệp chưa từng mở OCB Farm (US-26). -->
+    <div class="alert alert-secondary py-2 px-3 mb-0 shadow-sm" role="status" data-testid="visit-no-farm">
+      <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+      {{ target().full_name }} chưa có nông trại. Không có hành động nào để thực hiện ở đây.
+    </div>
+  } @else {
+    <!-- Chỉ hai hành động khả dụng khi ghé thăm: giúp đỡ và gửi lời chúc (BR-21). -->
+    <div class="d-flex flex-wrap align-items-start gap-2">
+      <div class="d-flex flex-wrap gap-2" role="group" aria-label="Giúp đỡ đồng nghiệp">
+        <span class="d-inline-flex" [title]="waterMessage() ?? ''">
+          <button
+            type="button"
+            class="btn btn-sm btn-success"
+            data-testid="visit-help-water"
+            [disabled]="!canWater()"
+            [attr.aria-describedby]="waterMessage() ? 'visit-water-reason' : null"
+            (click)="water()"
+          >
+            @if (helpBusy() === 'water') {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            } @else {
+              <i class="bi bi-droplet-fill me-1" aria-hidden="true"></i>
+            }
+            Giúp tưới cây
+          </button>
+        </span>
+        <span class="d-inline-flex" [title]="feedMessage() ?? ''">
+          <button
+            type="button"
+            class="btn btn-sm btn-success"
+            data-testid="visit-help-feed"
+            [disabled]="!canFeed()"
+            [attr.aria-describedby]="feedMessage() ? 'visit-feed-reason' : null"
+            (click)="feed()"
+          >
+            @if (helpBusy() === 'feed') {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            } @else {
+              <i class="bi bi-egg-fried me-1" aria-hidden="true"></i>
+            }
+            Giúp cho ăn
+          </button>
+        </span>
+      </div>
+      @if (waterMessage()) {
+        <span class="visually-hidden" id="visit-water-reason">{{ waterMessage() }}</span>
+      }
+      @if (feedMessage()) {
+        <span class="visually-hidden" id="visit-feed-reason">{{ feedMessage() }}</span>
+      }
+
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-primary"
+        data-testid="visit-open-greeting"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="greetingOpen()"
+        (click)="greetingOpen() ? closeGreeting() : openGreeting()"
+      >
+        <i class="bi bi-chat-heart me-1" aria-hidden="true"></i>Gửi lời chúc
+      </button>
+
+      @if (helpError()) {
+        <span class="small text-danger align-self-center" data-testid="visit-help-error">
+          <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ helpError() }}
+        </span>
+      }
+      @if (!helpError() && helpResultMessage()) {
+        <span class="small text-success align-self-center" data-testid="visit-help-result">
+          <i class="bi bi-check-circle me-1" aria-hidden="true"></i>{{ helpResultMessage() }}
+        </span>
+      }
+    </div>
+
+    @if (greetingOpen()) {
+      <div class="card shadow-sm visit-greeting-card" data-testid="visit-greeting-card">
+        <div class="card-body p-2">
+          <label for="visit-greeting-input" class="form-label small fw-semibold mb-1">
+            Lời chúc gửi tới {{ target().full_name }}
+          </label>
+          <textarea
+            id="visit-greeting-input"
+            class="form-control form-control-sm"
+            rows="2"
+            [maxlength]="greetingMaxLen() + 20"
+            [ngModel]="greetingMessage()"
+            (ngModelChange)="greetingMessage.set($event)"
+            [disabled]="greetingSending() || greetingAlreadySentToday()"
+            data-testid="visit-greeting-input"
+          ></textarea>
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <span class="small text-muted" data-testid="visit-greeting-count">
+              {{ greetingTrimmedLength() }}/{{ greetingMaxLen() }}
+            </span>
+            @if (greetingForbidden()) {
+              <span class="small text-danger" data-testid="visit-greeting-forbidden">
+                Lời chúc chứa từ ngữ không phù hợp.
+              </span>
+            }
+          </div>
+
+          @if (greetingAlreadySentToday()) {
+            <div class="small text-muted mt-1" data-testid="visit-greeting-already-sent">
+              <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Bạn đã gửi lời chúc cho nông trại này hôm nay.
+            </div>
+          } @else if (greetingSentJustNow()) {
+            <div class="small text-success mt-1" data-testid="visit-greeting-sent">
+              <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Đã gửi lời chúc.
+            </div>
+          }
+
+          @if (greetingError()) {
+            <div class="small text-danger mt-1" data-testid="visit-greeting-error">
+              <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ greetingError() }}
+            </div>
+          }
+
+          <div class="d-flex justify-content-end gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeGreeting()">Đóng</button>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary"
+              data-testid="visit-greeting-submit"
+              [disabled]="!canSendGreeting()"
+              (click)="sendGreeting()"
+            >
+              @if (greetingSending()) {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              }
+              Gửi lời chúc
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

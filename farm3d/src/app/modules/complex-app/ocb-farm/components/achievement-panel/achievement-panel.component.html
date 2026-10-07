@@ -1,0 +1,176 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="achievement-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-award-fill me-2 text-success" aria-hidden="true"></i>Thành tựu &amp; huy hiệu
+        </h5>
+        @if (saving()) {
+          <span class="badge text-bg-light border ms-auto me-2" data-testid="achievement-saving">
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang lưu
+          </span>
+        }
+        <button type="button" class="btn-close" [class.ms-0]="saving()" aria-label="Đóng bảng thành tựu" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Chọn huy hiệu hiển thị — giới hạn số lượng đồng thời (US-29, BR-12). -->
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <p class="text-muted small mb-0">
+            Chọn huy hiệu hiển thị trên trang nông trại của bạn (tối đa {{ badgesMax() }} huy hiệu cùng lúc).
+          </p>
+          <span
+            class="badge"
+            [class.text-bg-success]="!atBadgeLimit()"
+            [class.text-bg-warning]="atBadgeLimit()"
+            data-testid="achievement-badge-count"
+          >
+            {{ badgesCount() }}/{{ badgesMax() }}
+          </span>
+        </div>
+
+        @if (limitNotice()) {
+          <div
+            class="alert alert-warning small d-flex align-items-start gap-2"
+            role="alert"
+            data-testid="achievement-limit-notice"
+          >
+            <i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i>
+            <div class="flex-grow-1">
+              Bạn chỉ có thể hiển thị tối đa {{ badgesMax() }} huy hiệu cùng lúc. Hãy bỏ chọn một huy hiệu khác
+              trước khi chọn thêm.
+            </div>
+            <button type="button" class="btn-close" aria-label="Đóng thông báo" (click)="dismissLimitNotice()"></button>
+          </div>
+        }
+
+        @if (saveError(); as err) {
+          <div class="alert alert-danger small" role="alert" data-testid="achievement-save-error">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>{{ err }}
+          </div>
+        }
+
+        @switch (status()) {
+          @case ('loading') {
+            <div class="text-center text-muted py-5" role="status" aria-live="polite" data-testid="achievement-loading">
+              <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải danh sách thành tựu…
+            </div>
+          }
+          @case ('error') {
+            <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2" role="alert" data-testid="achievement-error">
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                Không tải được danh sách thành tựu.
+                @if (errorMessage()) {
+                  <span class="small d-block">{{ errorMessage() }}</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-testid="achievement-retry" (click)="retry()">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+              </button>
+            </div>
+          }
+          @default {
+            @if (isEmpty()) {
+              <div class="text-center py-4" data-testid="achievement-empty">
+                <i class="bi bi-award fs-1 text-muted" aria-hidden="true"></i>
+                <p class="fw-semibold mt-2 mb-1">Chưa có dữ liệu thành tựu</p>
+                <p class="text-muted small mb-0">Hãy quay lại sau khi danh mục thành tựu được cập nhật.</p>
+              </div>
+            } @else {
+              <ul class="list-group" data-testid="achievement-list">
+                @for (row of rows(); track row.code) {
+                  <li
+                    class="list-group-item"
+                    [class.bg-light]="!row.unlocked"
+                    [attr.data-testid]="row.unlocked ? 'achievement-row-unlocked' : 'achievement-row-locked'"
+                  >
+                    <div class="d-flex align-items-start gap-3">
+                      <i
+                        class="bi fs-3"
+                        [class.bi-award-fill]="row.unlocked"
+                        [class.text-success]="row.unlocked"
+                        [class.bi-award]="!row.unlocked"
+                        [class.text-muted]="!row.unlocked"
+                        aria-hidden="true"
+                      ></i>
+
+                      <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <span class="fw-semibold">{{ row.name }}</span>
+                          <span class="badge text-bg-light border text-muted">
+                            <i class="bi bi-coin me-1" aria-hidden="true"></i>+{{ row.reward }}
+                          </span>
+                          @if (row.unlocked) {
+                            <span class="badge text-bg-success" data-testid="achievement-unlocked-date">
+                              <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Đạt ngày {{ row.unlockedLabel }}
+                            </span>
+                          } @else {
+                            <span class="badge text-bg-secondary">Chưa đạt</span>
+                          }
+                        </div>
+
+                        <p class="text-muted small mb-2 mt-1">{{ row.description }}</p>
+
+                        @if (!row.unlocked) {
+                          <div
+                            class="progress"
+                            style="height: 8px"
+                            role="progressbar"
+                            [attr.aria-label]="row.name + ' tiến trình'"
+                            [attr.aria-valuenow]="row.progressPercent"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          >
+                            <div class="progress-bar bg-success" [style.width.%]="row.progressPercent"></div>
+                          </div>
+                          <div class="small text-muted mt-1" data-testid="achievement-progress">
+                            {{ row.progressLabel }}
+                          </div>
+                        }
+                      </div>
+
+                      @if (row.unlocked) {
+                        <div class="form-check form-switch mb-0 flex-shrink-0">
+                          <input
+                            #badgeInput
+                            class="form-check-input"
+                            type="checkbox"
+                            role="switch"
+                            [id]="'achievement-badge-' + row.code"
+                            [attr.data-testid]="'achievement-badge-toggle-' + row.code"
+                            [checked]="row.selected"
+                            [disabled]="saving() || (!row.selected && atBadgeLimit())"
+                            (change)="toggleBadge(row.code)"
+                          />
+                          <label class="form-check-label small" [for]="'achievement-badge-' + row.code">
+                            Hiển thị
+                          </label>
+                        </div>
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          }
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success btn-sm" data-testid="achievement-close" (click)="close()">
+          Xong
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

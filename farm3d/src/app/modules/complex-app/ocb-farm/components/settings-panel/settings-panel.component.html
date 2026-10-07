@@ -1,0 +1,150 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="settings-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-gear me-2 text-success" aria-hidden="true"></i>Cài đặt nông trại
+        </h5>
+        @if (saving()) {
+          <span class="badge text-bg-light border ms-auto me-2" data-testid="settings-saving">
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang lưu
+          </span>
+        }
+        <button type="button" class="btn-close ms-0" aria-label="Đóng cài đặt" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="text-muted small">
+          Mọi lựa chọn ở đây được lưu riêng cho bạn và giữ nguyên khi bạn đăng nhập trên thiết bị khác.
+        </p>
+
+        <!-- Âm thanh (US-32, BR-29) -->
+        <section class="mb-4" aria-labelledby="settings-sound-title">
+          <h6 id="settings-sound-title" class="fw-semibold">
+            <i class="bi bi-volume-up me-1" aria-hidden="true"></i>Âm thanh
+          </h6>
+
+          @if (soundUnavailable(); as msg) {
+            <div class="alert alert-warning small d-flex align-items-start gap-2" role="alert" data-testid="settings-sound-unavailable">
+              <i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i>
+              <div class="flex-grow-1">{{ msg }}</div>
+              <button
+                type="button"
+                class="btn-close"
+                aria-label="Đóng thông báo"
+                (click)="dismissSoundUnavailable()"
+              ></button>
+            </div>
+          }
+
+          <div class="form-check form-switch mb-2">
+            <input
+              #bgmInput
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="settings-bgm"
+              data-testid="settings-bgm-toggle"
+              [checked]="bgmEnabled()"
+              (change)="toggleBgm(bgmInput.checked)"
+            />
+            <label class="form-check-label" for="settings-bgm">Nhạc nền</label>
+          </div>
+
+          <div class="form-check form-switch">
+            <input
+              #sfxInput
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="settings-sfx"
+              data-testid="settings-sfx-toggle"
+              [checked]="sfxEnabled()"
+              (change)="toggleSfx(sfxInput.checked)"
+            />
+            <label class="form-check-label" for="settings-sfx">Hiệu ứng âm thanh</label>
+          </div>
+          <div class="form-text">Mặc định tắt. Bật/tắt độc lập, có hiệu lực ngay.</div>
+        </section>
+
+        <!-- Khoá cảnh (US-30) -->
+        <section class="mb-4" aria-labelledby="settings-scene-lock-title">
+          <h6 id="settings-scene-lock-title" class="fw-semibold">
+            <i class="bi bi-sun me-1" aria-hidden="true"></i>Khoá cảnh theo buổi
+          </h6>
+          <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-labelledby="settings-scene-lock-title">
+            @for (opt of sceneLockOptions; track opt.value ?? 'auto') {
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-success]="sceneLock() === opt.value"
+                [class.btn-outline-secondary]="sceneLock() !== opt.value"
+                role="radio"
+                [attr.aria-checked]="sceneLock() === opt.value"
+                [attr.data-testid]="'settings-scene-lock-' + (opt.value ?? 'auto')"
+                (click)="setSceneLock(opt.value)"
+              >
+                <i class="{{ opt.icon }} me-1" aria-hidden="true"></i>{{ opt.label }}
+              </button>
+            }
+          </div>
+          <div class="form-text">
+            Khoá một buổi để nông trại giữ nguyên ánh sáng của buổi đó. Thời tiết, tốc độ sinh trưởng
+            và phần thưởng không bị ảnh hưởng.
+          </div>
+        </section>
+
+        <!-- Chất lượng đồ hoạ (US-36) -->
+        <section aria-labelledby="settings-quality-title">
+          <h6 id="settings-quality-title" class="fw-semibold">
+            <i class="bi bi-display me-1" aria-hidden="true"></i>Mức chất lượng đồ hoạ
+          </h6>
+          <div class="d-flex flex-wrap gap-2 mb-2" role="radiogroup" aria-labelledby="settings-quality-title">
+            <button
+              type="button"
+              class="btn btn-sm"
+              [class.btn-success]="!qualityIsManual()"
+              [class.btn-outline-secondary]="qualityIsManual()"
+              role="radio"
+              [attr.aria-checked]="!qualityIsManual()"
+              data-testid="settings-quality-auto"
+              (click)="useAutoQuality()"
+            >
+              <i class="bi bi-magic me-1" aria-hidden="true"></i>Tự động theo thiết bị
+            </button>
+            @for (tier of qualities; track tier) {
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-success]="qualityIsManual() && qualityTier() === tier"
+                [class.btn-outline-secondary]="!(qualityIsManual() && qualityTier() === tier)"
+                role="radio"
+                [attr.aria-checked]="qualityIsManual() && qualityTier() === tier"
+                [attr.data-testid]="'settings-quality-' + tier"
+                (click)="setQuality(tier)"
+              >
+                <i class="{{ qualityIcons[tier] }} me-1" aria-hidden="true"></i>{{ qualityLabels[tier] }}
+              </button>
+            }
+          </div>
+          <div class="form-text" data-testid="settings-quality-reason">{{ qualityReason() }}</div>
+        </section>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success btn-sm" data-testid="settings-close" (click)="close()">
+          Xong
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

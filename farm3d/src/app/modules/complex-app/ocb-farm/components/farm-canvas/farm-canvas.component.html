@@ -1,0 +1,132 @@
+<div
+  class="farm-canvas-stage"
+  tabindex="0"
+  role="application"
+  aria-roledescription="khung hình nông trại 3D"
+  aria-label="Nông trại 3D"
+  aria-describedby="farm-canvas-help"
+  data-testid="farm-canvas"
+  [class.d-none]="error()"
+  (keydown)="onKeydown($event)"
+>
+  <canvas #canvas class="farm-canvas" aria-hidden="true"></canvas>
+</div>
+<p id="farm-canvas-help" class="visually-hidden">
+  Kéo để di chuyển góc nhìn, cuộn chuột hoặc chụm hai ngón để phóng to thu nhỏ, chạm để chọn ô
+  hoặc vật thể. Bàn phím: phím mũi tên để di chuyển, phím cộng và trừ để phóng, Q và E để xoay,
+  phím 0 để về giữa nông trại.
+</p>
+<div class="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+  {{ selectionMessage() }}
+</div>
+
+@if (isFullscreen()) {
+  <!-- Nút thoát toàn màn hình duy nhất — Farm_Stage chỉ còn khung 3D + nút này khi fullscreen (AC 1.2). -->
+  <button
+    type="button"
+    class="btn btn-light farm-canvas-touch farm-fullscreen-exit shadow-sm"
+    data-testid="farm-fullscreen-exit"
+    aria-label="Thoát chế độ toàn màn hình"
+    title="Thoát chế độ toàn màn hình (Esc)"
+    (click)="exitFullscreen()"
+  >
+    <i class="bi bi-fullscreen-exit" aria-hidden="true"></i>
+  </button>
+}
+
+@if (fullscreenUnsupported()) {
+  <div class="farm-fullscreen-warning p-2" data-testid="farm-fullscreen-unsupported">
+    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 py-2" role="alert">
+      <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+      <div class="small">Trình duyệt không hỗ trợ hoặc đã từ chối chế độ toàn màn hình.</div>
+    </div>
+  </div>
+}
+
+@if (error(); as message) {
+  <div class="farm-canvas-error p-3" data-testid="farm-canvas-error">
+    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0" role="alert">
+      <i class="bi bi-exclamation-triangle fs-5" aria-hidden="true"></i>
+      <div class="flex-grow-1">
+        <div class="fw-semibold">Không hiển thị được khung hình 3D</div>
+        <div class="small mb-2">{{ message }}</div>
+        <button type="button" class="btn btn-sm btn-warning farm-canvas-touch" (click)="retryInit()">
+          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+        </button>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="farm-canvas-controls d-flex flex-column align-items-end gap-2" data-testid="farm-canvas-controls">
+    @if (!isFullscreen()) {
+      <!-- Bật chế độ toàn màn hình (AC 1.1) — gọi FullscreenService.enter() trên .farm-stage. -->
+      <button
+        type="button"
+        class="btn btn-light farm-canvas-touch shadow-sm"
+        data-testid="farm-fullscreen-enter"
+        aria-label="Xem toàn màn hình"
+        title="Xem toàn màn hình"
+        [disabled]="!ready()"
+        (click)="enterFullscreen()"
+      >
+        <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
+      </button>
+    }
+    <!-- Chụp ảnh nông trại (US-41) — dùng chung FarmSceneService của khung này. -->
+    <app-snapshot-button [disabled]="controlsDisabled()" />
+    <div
+      class="btn-group-vertical shadow-sm"
+      role="group"
+      [attr.aria-label]="'Phóng to thu nhỏ, mức hiện tại ' + zoomPercent() + '%'"
+    >
+      <button
+        type="button"
+        class="btn btn-light farm-canvas-touch"
+        aria-label="Phóng to"
+        title="Phóng to (+)"
+        [disabled]="controlsDisabled() || !canZoomIn()"
+        (click)="zoomIn()"
+      >
+        <i class="bi bi-zoom-in" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        class="btn btn-light farm-canvas-touch"
+        aria-label="Thu nhỏ"
+        title="Thu nhỏ (−)"
+        [disabled]="controlsDisabled() || !canZoomOut()"
+        (click)="zoomOut()"
+      >
+        <i class="bi bi-zoom-out" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        class="btn btn-light farm-canvas-touch"
+        aria-label="Về giữa nông trại"
+        title="Về giữa nông trại (0)"
+        [disabled]="controlsDisabled()"
+        (click)="resetView()"
+      >
+        <i class="bi bi-bullseye" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="farm-canvas-rotate shadow-sm" role="group" aria-label="Xoay góc nhìn 90 độ">
+      @for (btn of rotateButtons; track btn.turn) {
+        <button
+          type="button"
+          class="btn farm-canvas-touch"
+          [class.btn-success]="quarterTurn() === btn.turn"
+          [class.btn-light]="quarterTurn() !== btn.turn"
+          [attr.aria-label]="btn.label"
+          [attr.aria-pressed]="quarterTurn() === btn.turn"
+          [title]="btn.label"
+          [disabled]="controlsDisabled()"
+          (click)="setTurn(btn.turn)"
+        >
+          <i class="bi bi-compass farm-canvas-compass" [style.transform]="'rotate(' + btn.degrees + 'deg)'" aria-hidden="true"></i>
+        </button>
+      }
+    </div>
+  </div>
+}

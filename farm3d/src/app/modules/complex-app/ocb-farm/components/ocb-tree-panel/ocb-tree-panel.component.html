@@ -1,0 +1,315 @@
+﻿<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="ocb-tree-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-tree-fill me-2 text-success" aria-hidden="true"></i>Cây OCB của {{ ownerLabel() }}
+          <span class="badge text-bg-success ms-2 align-middle" data-testid="tree-milestone-badge">
+            Mốc {{ milestoneText() }}
+          </span>
+        </h5>
+        <button type="button" class="btn-close" aria-label="Đóng thông tin Cây OCB" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Banner chúc mừng suốt ngày kỷ niệm, kể cả sau khi đã hái quả (US-7). -->
+        @if (showBanner()) {
+          <div
+            class="alert alert-success d-flex flex-wrap align-items-center gap-2"
+            role="status"
+            aria-live="polite"
+            data-testid="tree-anniversary-banner"
+          >
+            <i class="bi bi-balloon-heart-fill fs-3 text-danger" aria-hidden="true"></i>
+            <div class="flex-grow-1">
+              <div class="fw-semibold">
+                Chúc mừng {{ anniversary()!.years }} năm đồng hành cùng OCB!
+              </div>
+              <div class="small">
+                Hôm nay ({{ anniversaryDateLabel() }}) Cây OCB ra hoa kết quả.
+                @if (fruitCount() !== null && reward() !== null) {
+                  Hái {{ fruitCount() }} quả để nhận {{ reward() }} Hạt OCB.
+                }
+              </div>
+            </div>
+            @if (claimed()) {
+              <span class="badge text-bg-light border" data-testid="tree-fruit-claimed">
+                <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Đã nhận phần thưởng năm nay
+              </span>
+            } @else if (!isVisitor()) {
+              <button
+                type="button"
+                class="btn btn-success btn-sm"
+                data-testid="tree-pick-fruit"
+                [disabled]="pickDisabled()"
+                [attr.aria-busy]="picking()"
+                (click)="onPick()"
+              >
+                @if (picking()) {
+                  <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                } @else {
+                  <i class="bi bi-basket2 me-1" aria-hidden="true"></i>
+                }
+                Hái quả kỷ niệm
+              </button>
+            }
+          </div>
+        } @else if (showGraceReminder()) {
+          <div class="alert alert-info d-flex flex-wrap align-items-center gap-2" role="status" data-testid="tree-anniversary-grace">
+            <i class="bi bi-gift fs-4" aria-hidden="true"></i>
+            <div class="flex-grow-1 small">
+              Bạn chưa nhận quả kỷ niệm {{ anniversary()!.years }} năm ({{ anniversaryDateLabel() }}).
+              @if (anniversary()!.graceDaysLeft > 0) {
+                Còn {{ anniversary()!.graceDaysLeft }} ngày ân hạn sau hôm nay.
+              } @else {
+                Hôm nay là ngày cuối cùng để nhận.
+              }
+            </div>
+            <button
+              type="button"
+              class="btn btn-outline-success btn-sm"
+              data-testid="tree-pick-fruit"
+              [disabled]="pickDisabled()"
+              [attr.aria-busy]="picking()"
+              (click)="onPick()"
+            >
+              @if (picking()) {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              }
+              Nhận quả kỷ niệm
+            </button>
+          </div>
+        }
+
+        <!-- Cây OCB không có lựa chọn di chuyển / bán / xoá (BR-1). -->
+        <p class="small text-muted mb-3" data-testid="tree-fixed-note">
+          <i class="bi bi-pin-map-fill me-1 text-success" aria-hidden="true"></i>
+          Cây OCB là cây duy nhất, cố định tại trung tâm nông trại — không di chuyển, bán hay xoá được.
+        </p>
+
+        @if (pickError(); as err) {
+          <div class="alert alert-warning small py-2" role="alert" data-testid="tree-pick-error">
+            <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ err }}
+          </div>
+        }
+
+        <ul class="nav nav-tabs mb-3" role="tablist" aria-label="Thông tin Cây OCB">
+          @for (t of tabs; track t.id) {
+            <li class="nav-item" role="presentation">
+              <button
+                type="button"
+                class="nav-link"
+                role="tab"
+                [class.active]="tab() === t.id"
+                [attr.aria-selected]="tab() === t.id"
+                [attr.aria-controls]="'ocb-tree-tab-' + t.id"
+                [attr.data-testid]="'tree-tab-' + t.id"
+                (click)="selectTab(t.id)"
+              >
+                <i class="{{ t.icon }} me-1" aria-hidden="true"></i>{{ t.label }}
+                @if (t.id === 'branches') {
+                  <span class="badge text-bg-secondary ms-1">{{ branches().length }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+
+        @switch (tab()) {
+          @case ('overview') {
+            <div id="ocb-tree-tab-overview" role="tabpanel" data-testid="tree-overview">
+              @if (joinLabel(); as join) {
+                <div class="row g-3 mb-3">
+                  <div class="col-sm-6">
+                    <label class="form-label small text-muted mb-1" for="ocb-tree-join-date">Ngày vào làm đang áp dụng</label>
+                    <div class="input-group">
+                      <span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
+                      <input
+                        id="ocb-tree-join-date"
+                        class="form-control"
+                        type="text"
+                        readonly
+                        aria-readonly="true"
+                        [value]="join"
+                        data-testid="tree-join-date"
+                      />
+                    </div>
+                    @if (sourceLabel()) {
+                      <div class="form-text">{{ sourceLabel() }}</div>
+                    }
+                  </div>
+                  <div class="col-sm-6">
+                    <div class="small text-muted mb-1">Thâm niên</div>
+                    <div class="fs-5 fw-semibold" data-testid="tree-seniority">{{ seniorityLabel() }}</div>
+                    <div class="small" data-testid="tree-next-milestone">
+                      @if (atMax()) {
+                        <span class="badge text-bg-warning">
+                          <i class="bi bi-trophy me-1" aria-hidden="true"></i>Cây đã đạt mốc cao nhất
+                        </span>
+                      } @else if (daysToNext() !== null) {
+                        Còn <strong>{{ daysToNext() }}</strong> ngày tới mốc {{ nextLabel() }}
+                      }
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="alert alert-warning" role="alert" data-testid="tree-join-missing">
+                  <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                  Hệ thống chưa có ngày vào làm của {{ ownerLabel() }} nên Cây OCB đang ở mốc dưới 6 tháng. Vui lòng
+                  yêu cầu quản trị viên bổ sung ngày vào làm theo hướng dẫn bên dưới.
+                </div>
+              }
+
+              @if (!isVisitor()) {
+              <div class="callout callout-info border rounded p-3 bg-body-tertiary" data-testid="tree-admin-note">
+                <p class="mb-2 small">
+                  <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>
+                  Chỉ <strong>quản trị viên</strong> mới được chỉnh sửa ngày vào làm. Khi ngày được sửa, thâm niên
+                  và Cây OCB được tính lại, tiến trình nông trại vẫn giữ nguyên.
+                </p>
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm p-0"
+                  data-testid="tree-request-guide-toggle"
+                  [attr.aria-expanded]="guideOpen()"
+                  aria-controls="ocb-tree-request-guide"
+                  (click)="toggleGuide()"
+                >
+                  <i class="bi" [class.bi-chevron-down]="!guideOpen()" [class.bi-chevron-up]="guideOpen()" aria-hidden="true"></i>
+                  Ngày vào làm chưa đúng? Xem cách yêu cầu chỉnh sửa
+                </button>
+                @if (guideOpen()) {
+                  <div id="ocb-tree-request-guide" class="mt-2" data-testid="tree-request-guide">
+                    <ol class="small ps-3 mb-2">
+                      @for (step of requestSteps; track step) {
+                        <li class="mb-1">{{ step }}</li>
+                      }
+                    </ol>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                      data-testid="tree-copy-request"
+                      (click)="copyRequest()"
+                    >
+                      <i class="bi bi-clipboard me-1" aria-hidden="true"></i>Sao chép mẫu yêu cầu
+                    </button>
+                    <span class="small ms-2" role="status" aria-live="polite">
+                      @if (copyState() === 'copied') {
+                        <span class="text-success">Đã sao chép.</span>
+                      } @else if (copyState() === 'failed') {
+                        <span class="text-danger">Không sao chép được, vui lòng tự ghi các thông tin trên.</span>
+                      }
+                    </span>
+                  </div>
+                }
+              </div>
+              }
+            </div>
+          }
+
+          @case ('branches') {
+            <div id="ocb-tree-tab-branches" role="tabpanel" data-testid="tree-branches">
+              @if (branches().length === 0) {
+                <p class="text-muted small mb-0" data-testid="tree-branches-empty">
+                  <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+                  Cây OCB mọc nhánh lớn đầu tiên khi bạn đủ 3 năm thâm niên, sau đó thêm một nhánh mỗi năm.
+                </p>
+              } @else {
+                <p class="small text-muted">
+                  Bấm vào một nhánh ở đây hoặc trên Cây OCB trong nông trại để xem năm mà nhánh đó tượng trưng.
+                </p>
+                <div class="d-flex flex-wrap gap-2 mb-3" role="list">
+                  @for (b of branches(); track b.index) {
+                    <button
+                      type="button"
+                      role="listitem"
+                      class="btn btn-sm"
+                      [class.btn-success]="activeBranch() === b.index"
+                      [class.btn-outline-success]="activeBranch() !== b.index"
+                      [attr.aria-pressed]="activeBranch() === b.index"
+                      [attr.aria-label]="'Nhánh ' + (b.index + 1) + ', năm gắn bó thứ ' + b.tenureYear"
+                      [attr.data-testid]="'tree-branch-' + b.index"
+                      (click)="selectBranch(b.index)"
+                    >
+                      <i class="bi bi-tree me-1" aria-hidden="true"></i>{{ b.calendarYear ?? 'Nhánh ' + (b.index + 1) }}
+                    </button>
+                  }
+                </div>
+                @if (selectedBranch(); as b) {
+                  <div class="alert alert-light border mb-0" role="status" aria-live="polite" data-testid="tree-branch-detail">
+                    <div class="fw-semibold">Nhánh thứ {{ b.index + 1 }}</div>
+                    <div class="small">
+                      @if (b.calendarYear !== null) {
+                        Tượng trưng cho năm <strong>{{ b.calendarYear }}</strong> —
+                      }
+                      năm gắn bó thứ <strong>{{ b.tenureYear }}</strong> của {{ ownerLabel() }} với OCB.
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          @case ('timeline') {
+            <div id="ocb-tree-tab-timeline" role="tabpanel" data-testid="tree-timeline">
+              @if (timeline() === null) {
+                <p class="text-muted small mb-0">Chưa có ngày vào làm nên chưa dựng được dòng thời gian.</p>
+              } @else {
+                @if (passed().length === 0) {
+                  <div class="alert alert-light border small" data-testid="tree-timeline-empty">
+                    <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>
+                    Cây OCB chưa đạt mốc nào.
+                    @if (next(); as n) {
+                      Còn {{ n.daysRemaining }} ngày tới mốc đầu tiên ({{ n.label }}, ngày {{ n.dateLabel }}).
+                    }
+                  </div>
+                } @else {
+                  <ol class="list-group list-group-numbered mb-3" aria-label="Các mốc đã đi qua">
+                    @for (e of passed(); track e.milestone) {
+                      <li
+                        class="list-group-item d-flex justify-content-between align-items-center"
+                        [attr.data-testid]="'tree-timeline-passed-' + e.milestone"
+                      >
+                        <span class="ms-2 me-auto">
+                          <i class="bi bi-check-circle-fill text-success me-1" aria-hidden="true"></i>{{ e.label }}
+                        </span>
+                        <span class="badge text-bg-light border">{{ e.dateLabel }}</span>
+                      </li>
+                    }
+                  </ol>
+                }
+
+                @if (next(); as n) {
+                  @if (passed().length > 0) {
+                    <div class="border border-success border-opacity-50 border-dashed rounded p-2 small" data-testid="tree-timeline-next">
+                      <i class="bi bi-flag me-1 text-success" aria-hidden="true"></i>
+                      Mốc kế tiếp: <strong>{{ n.label }}</strong> vào ngày {{ n.dateLabel }} — còn
+                      {{ n.daysRemaining }} ngày.
+                    </div>
+                  }
+                } @else {
+                  <div class="small text-muted" data-testid="tree-timeline-max">
+                    <i class="bi bi-trophy me-1" aria-hidden="true"></i>Cây đã đạt mốc cao nhất.
+                  </div>
+                }
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="close()" data-testid="tree-panel-close">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>

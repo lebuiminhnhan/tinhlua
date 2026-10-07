@@ -1,0 +1,261 @@
+@if (mode() === 'guide') {
+  <!-- Hướng dẫn 5 bước — bỏ qua được ở mọi bước (US-1). -->
+  <div class="modal-backdrop fade show" aria-hidden="true"></div>
+  <div
+    #dialog
+    class="modal fade show d-block"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="titleId"
+    tabindex="-1"
+    data-testid="farm-guide"
+  >
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" [id]="titleId">
+            <i class="bi bi-question-circle me-2 text-success" aria-hidden="true"></i>Hướng dẫn chơi
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Bỏ qua hướng dẫn"
+            (click)="closeGuide()"
+          ></button>
+        </div>
+
+        <div class="modal-body">
+          <nav aria-label="Các bước hướng dẫn">
+            <ul class="nav nav-pills nav-fill small mb-2 flex-nowrap">
+              @for (s of steps; track s.title; let i = $index) {
+                <li class="nav-item">
+                  <button
+                    type="button"
+                    class="nav-link px-1 py-1"
+                    [class.active]="i === stepIndex()"
+                    [attr.aria-current]="i === stepIndex() ? 'step' : null"
+                    [attr.aria-label]="'Bước ' + (i + 1) + ': ' + s.title"
+                    (click)="goToStep(i)"
+                  >
+                    {{ i + 1 }}
+                  </button>
+                </li>
+              }
+            </ul>
+          </nav>
+          <div
+            class="progress guide-progress mb-3"
+            role="progressbar"
+            aria-label="Tiến độ hướng dẫn"
+            [attr.aria-valuenow]="guidePercent()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div class="progress-bar bg-success" [style.width.%]="guidePercent()"></div>
+          </div>
+
+          <div class="text-center px-2" aria-live="polite" data-testid="farm-guide-step">
+            <i class="{{ currentStep().icon }} guide-icon text-success d-block mb-2" aria-hidden="true"></i>
+            <p class="text-muted small mb-1">Bước {{ stepIndex() + 1 }}/{{ steps.length }}</p>
+            <h6 class="fw-semibold">{{ currentStep().title }}</h6>
+            <p class="mb-2">{{ currentStep().body }}</p>
+            <ul class="list-unstyled small text-start mb-0">
+              @for (tip of currentStep().tips; track tip) {
+                <li class="d-flex gap-2 mb-1">
+                  <i class="bi bi-check2-circle text-success" aria-hidden="true"></i><span>{{ tip }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-footer justify-content-between">
+          <button
+            type="button"
+            class="btn btn-link text-muted px-0"
+            data-testid="farm-guide-skip"
+            (click)="closeGuide()"
+          >
+            Bỏ qua
+          </button>
+          <div class="d-flex gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              [disabled]="isFirstStep()"
+              (click)="prevStep()"
+            >
+              <i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Quay lại
+            </button>
+            <button
+              type="button"
+              class="btn btn-success"
+              data-testid="farm-guide-next"
+              (click)="nextStep()"
+            >
+              @if (isLastStep()) {
+                <i class="bi bi-play-fill me-1" aria-hidden="true"></i>Bắt đầu chơi
+              } @else {
+                Tiếp<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+} @else {
+  <!-- Khởi tạo nông trại: chọn ngày vào làm → xem lại thâm niên → xác nhận (US-1..US-3). -->
+  <div class="card shadow-sm onboarding-card m-3" data-testid="farm-onboarding">
+    <div class="card-header">
+      <h3 class="card-title mb-0" [id]="titleId">
+        <i class="bi bi-house-heart me-2 text-success" aria-hidden="true"></i>Chào mừng bạn đến
+        Nông trại OCB
+      </h3>
+    </div>
+
+    <div class="card-body">
+      <ol class="nav nav-pills nav-fill small mb-3 list-unstyled" aria-label="Các bước khởi tạo">
+        <li class="nav-item">
+          <span
+            class="nav-link py-1"
+            [class.active]="setupStep() === 1"
+            [attr.aria-current]="setupStep() === 1 ? 'step' : null"
+          >
+            1. Ngày vào làm
+          </span>
+        </li>
+        <li class="nav-item">
+          <span
+            class="nav-link py-1"
+            [class.active]="setupStep() === 2"
+            [attr.aria-current]="setupStep() === 2 ? 'step' : null"
+          >
+            2. Xác nhận thâm niên
+          </span>
+        </li>
+      </ol>
+
+      @switch (phase()) {
+        @case ('lookup') {
+          <div class="text-center py-4" role="status" data-testid="farm-onboarding-lookup">
+            <span class="spinner-border spinner-border-sm text-success me-2" aria-hidden="true"></span>
+            Đang tra cứu ngày vào làm từ dữ liệu nhân sự...
+          </div>
+        }
+
+        @case ('input') {
+          <p class="text-muted small">
+            Cây OCB lớn dần theo thâm niên của bạn. Hãy xác nhận ngày bạn bắt đầu làm việc tại OCB.
+          </p>
+
+          @if (lookupNotice(); as notice) {
+            <div class="alert alert-warning small py-2 d-flex gap-2" role="status" data-testid="farm-onboarding-notice">
+              <i class="bi bi-info-circle mt-1" aria-hidden="true"></i>
+              <span>{{ notice }}</span>
+            </div>
+          }
+
+          <form novalidate (submit)="confirmDate($event)">
+            <div class="mb-3">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <label class="form-label mb-0" [for]="dateInputId">Ngày vào làm tại OCB</label>
+                <span
+                  class="badge {{ sourceBadge().cls }}"
+                  data-testid="farm-join-date-source"
+                >
+                  <i class="{{ sourceBadge().icon }} me-1" aria-hidden="true"></i>{{ sourceBadge().label }}
+                </span>
+              </div>
+              <input
+                #dateInput
+                type="date"
+                class="form-control"
+                [class.is-invalid]="validationError() !== null"
+                [id]="dateInputId"
+                [value]="joinDate()"
+                [min]="range().min"
+                [max]="range().max"
+                required
+                [attr.aria-invalid]="validationError() !== null"
+                [attr.aria-describedby]="validationError() ? dateHelpId + ' ' + dateErrorId : dateHelpId"
+                data-testid="farm-join-date-input"
+                (input)="onDateInput($event)"
+                (change)="onDateInput($event)"
+              />
+              @if (validationError(); as msg) {
+                <div class="invalid-feedback d-block" [id]="dateErrorId" role="alert">{{ msg }}</div>
+              }
+              <div class="form-text" [id]="dateHelpId">Khoảng cho phép: {{ rangeLabel() }}.</div>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100" data-testid="farm-join-date-confirm">
+              <i class="bi bi-check2 me-1" aria-hidden="true"></i>Xác nhận
+            </button>
+          </form>
+        }
+
+        @default {
+          <!-- review / submitting -->
+          <p class="text-muted small">Vui lòng kiểm tra lại trước khi tạo nông trại.</p>
+          <dl class="row mb-3 small" data-testid="farm-onboarding-review">
+            <dt class="col-5 fw-normal text-muted">Ngày vào làm</dt>
+            <dd class="col-7 fw-semibold mb-1">{{ joinDateLabel() }}</dd>
+            <dt class="col-5 fw-normal text-muted">Nguồn</dt>
+            <dd class="col-7 mb-1">
+              <span class="badge {{ sourceBadge().cls }}">{{ sourceBadge().label }}</span>
+            </dd>
+            <dt class="col-5 fw-normal text-muted">Thâm niên</dt>
+            <dd class="col-7 fw-semibold text-success mb-0" data-testid="farm-onboarding-seniority">
+              {{ seniorityLabel() }}
+            </dd>
+          </dl>
+
+          <p class="small text-muted mb-3">
+            <i class="bi bi-lock me-1" aria-hidden="true"></i>Sau khi xác nhận, chỉ quản trị viên mới sửa
+            được ngày vào làm.
+          </p>
+
+          @if (submitError(); as err) {
+            <div class="alert alert-danger small py-2 d-flex gap-2" role="alert" data-testid="farm-onboarding-error">
+              <i class="bi bi-exclamation-circle mt-1" aria-hidden="true"></i>
+              <span>{{ err }}</span>
+            </div>
+          }
+
+          <div class="d-flex gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              [disabled]="phase() === 'submitting'"
+              data-testid="farm-onboarding-back"
+              (click)="backToEdit()"
+            >
+              <i class="bi bi-pencil me-1" aria-hidden="true"></i>Sửa ngày
+            </button>
+            <button
+              type="button"
+              class="btn btn-success flex-grow-1"
+              [disabled]="phase() === 'submitting'"
+              [attr.aria-busy]="phase() === 'submitting'"
+              data-testid="farm-onboarding-submit"
+              (click)="submit()"
+            >
+              @if (phase() === 'submitting') {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                Đang khởi tạo nông trại...
+              } @else if (submitError()) {
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+              } @else {
+                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>Đúng, tạo nông trại
+              }
+            </button>
+          </div>
+          @if (phase() === 'submitting') {
+            <span class="visually-hidden" role="status">Đang khởi tạo nông trại</span>
+          }
+        }
+      }
+    </div>
+  </div>
+}

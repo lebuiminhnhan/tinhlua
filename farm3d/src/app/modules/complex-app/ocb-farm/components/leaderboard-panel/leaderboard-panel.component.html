@@ -1,0 +1,153 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="leaderboard-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-trophy-fill me-2 text-success" aria-hidden="true"></i>Bảng xếp hạng
+        </h5>
+        <button type="button" class="btn-close" aria-label="Đóng bảng xếp hạng" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- 3 tiêu chí xếp hạng, mặc định thâm niên Cây OCB (US-28). -->
+        <ul class="nav nav-pills mb-3 gap-2" role="tablist" aria-label="Tiêu chí xếp hạng" data-testid="leaderboard-tabs">
+          @for (tab of metricTabs; track tab.metric) {
+            <li class="nav-item" role="presentation">
+              <button
+                type="button"
+                class="nav-link"
+                [class.active]="metric() === tab.metric"
+                role="tab"
+                [attr.aria-selected]="metric() === tab.metric"
+                [attr.data-testid]="'leaderboard-tab-' + tab.metric"
+                [disabled]="status() === 'loading'"
+                (click)="selectMetric(tab.metric)"
+              >
+                <i class="{{ tab.icon }} me-1" aria-hidden="true"></i>{{ tab.label }}
+              </button>
+            </li>
+          }
+        </ul>
+
+        <!-- Lọc theo phòng ban của chính nhân viên (BR-23: không hiển thị/gọi dữ liệu phòng ban khác). -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div class="form-check form-switch mb-0">
+            <input
+              type="checkbox"
+              role="switch"
+              class="form-check-input"
+              id="leaderboard-dept-filter"
+              data-testid="leaderboard-dept-filter"
+              [checked]="filterOwnDepartment()"
+              [disabled]="!canFilterOwnDepartment() || status() === 'loading'"
+              (change)="toggleOwnDepartment()"
+            />
+            <label class="form-check-label small" for="leaderboard-dept-filter">
+              Chỉ xem phòng ban của tôi
+              @if (selfDepartmentName()) {
+                <span class="text-muted">({{ selfDepartmentName() }})</span>
+              }
+            </label>
+          </div>
+          @if (status() === 'success') {
+            <span class="small text-muted" data-testid="leaderboard-refreshed-at">
+              <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Cập nhật lúc {{ refreshedAtLabel() }}
+            </span>
+          }
+        </div>
+
+        @switch (status()) {
+          @case ('loading') {
+            <div class="text-center text-muted py-5" role="status" aria-live="polite" data-testid="leaderboard-loading">
+              <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải bảng xếp hạng…
+            </div>
+          }
+          @case ('error') {
+            <!-- Lỗi tải: chỉ hiển thị thông báo + thử lại, KHÔNG hiển thị danh sách một phần (US-28). -->
+            <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2" role="alert" data-testid="leaderboard-error">
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                Không tải được bảng xếp hạng.
+                @if (errorMessage()) {
+                  <span class="small d-block">{{ errorMessage() }}</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-testid="leaderboard-retry" (click)="retry()">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+              </button>
+            </div>
+          }
+          @default {
+            @if (isEmpty()) {
+              <div class="text-center py-4" data-testid="leaderboard-empty">
+                <i class="bi bi-trophy fs-1 text-muted" aria-hidden="true"></i>
+                <p class="fw-semibold mt-2 mb-1">Chưa có ai trên bảng xếp hạng</p>
+                <p class="text-muted small mb-0">
+                  @if (filterOwnDepartment()) {
+                    Chưa có đồng nghiệp nào trong phòng ban của bạn có nông trại.
+                  } @else {
+                    Hãy là người đầu tiên có nông trại để xuất hiện ở đây.
+                  }
+                </p>
+              </div>
+            } @else {
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0" data-testid="leaderboard-table">
+                  <caption class="visually-hidden">Bảng xếp hạng, tối đa 20 vị trí đầu, giảm dần theo giá trị</caption>
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col" class="text-nowrap">Hạng</th>
+                      <th scope="col">Nhân viên</th>
+                      <th scope="col">Phòng ban</th>
+                      <th scope="col" class="text-end text-nowrap">Giá trị</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of rows(); track row.user_id) {
+                      <tr
+                        [class.table-success]="row.is_self"
+                        [attr.data-testid]="row.is_self ? 'leaderboard-row-self' : 'leaderboard-row'"
+                      >
+                        <td class="text-nowrap fw-semibold">#{{ row.rank }}</td>
+                        <td>
+                          {{ row.full_name }}
+                          @if (row.is_self) {
+                            <span class="badge text-bg-success ms-1">Bạn</span>
+                          }
+                        </td>
+                        <td class="text-muted small">{{ row.department_name || '—' }}</td>
+                        <td class="text-end text-nowrap fw-semibold">{{ valueLabel(row.value) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                  @if (pinnedSelf(); as self) {
+                    <tfoot>
+                      <tr class="table-success" data-testid="leaderboard-row-self-pinned">
+                        <td class="text-nowrap fw-semibold">#{{ self.rank }}</td>
+                        <td>
+                          {{ self.full_name }}
+                          <span class="badge text-bg-success ms-1">Bạn</span>
+                        </td>
+                        <td class="text-muted small">{{ self.department_name || '—' }}</td>
+                        <td class="text-end text-nowrap fw-semibold">{{ valueLabel(self.value) }}</td>
+                      </tr>
+                    </tfoot>
+                  }
+                </table>
+              </div>
+            }
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,104 @@
+// Khung 3D phủ trọn `.farm-stage` (container `position-relative`). HUD (z 10) nằm trên
+// mép trên, overlay tải (z 20) phủ trên cùng; nút điều khiển (z 15) ở mép phải dưới.
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  touch-action: none; // cử chỉ trên khung 3D không cuộn / phóng trang (US-38)
+  overscroll-behavior: contain;
+}
+
+.farm-canvas-stage {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // Focus bàn phím rõ ràng (không bỏ outline mà không có thay thế).
+  &:focus-visible {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: -3px;
+  }
+}
+
+.farm-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.farm-canvas-controls {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 15;
+}
+
+// Vùng chạm tối thiểu 44×44 px cho điều khiển cốt lõi (US-38).
+.farm-canvas-touch {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+}
+
+.farm-canvas-rotate {
+  display: grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 2px;
+  padding: 2px;
+  background: var(--bs-white);
+  border-radius: var(--bs-border-radius);
+}
+
+.farm-canvas-compass {
+  display: inline-block;
+  transition: transform 0.2s ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.farm-canvas-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .alert {
+    max-width: 28rem;
+  }
+}
+
+// Nút thoát toàn màn hình duy nhất (AC 1.2) — góc trên-trái, luôn trên cùng.
+.farm-fullscreen-exit {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 20;
+}
+
+// Thông báo trình duyệt từ chối/không hỗ trợ Fullscreen API (AC 1.4).
+.farm-fullscreen-warning {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+
+  .alert {
+    max-width: 32rem;
+  }
+}

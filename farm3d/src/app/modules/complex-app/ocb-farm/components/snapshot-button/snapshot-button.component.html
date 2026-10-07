@@ -1,0 +1,31 @@
+<div class="btn-group shadow-sm" role="group" aria-label="Chụp ảnh nông trại">
+  <button
+    type="button"
+    class="btn btn-light farm-snapshot-touch"
+    data-testid="farm-snapshot"
+    [attr.aria-label]="label()"
+    [title]="label()"
+    [disabled]="!canCapture()"
+    [attr.aria-busy]="busy()"
+    (click)="capture()"
+  >
+    @if (busy()) {
+      <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    } @else {
+      <i class="bi bi-camera" aria-hidden="true"></i>
+    }
+  </button>
+  @if (failed() && !busy()) {
+    <button
+      type="button"
+      class="btn btn-warning farm-snapshot-touch"
+      data-testid="farm-snapshot-retry"
+      aria-label="Chụp ảnh lỗi, thử lại"
+      title="Chụp ảnh lỗi, thử lại"
+      [disabled]="!canCapture()"
+      (click)="capture()"
+    >
+      <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+    </button>
+  }
+</div>

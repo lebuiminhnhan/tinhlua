@@ -1,0 +1,112 @@
+@if (showProgress()) {
+  <div class="farm-loading-panel card shadow-sm mb-0" role="status" aria-live="polite">
+    <div class="card-body text-center">
+      <i class="bi bi-tree fs-1 text-success d-block mb-2" aria-hidden="true"></i>
+      <h5 class="mb-1">Đang tải nông trại</h5>
+      <p class="text-muted small mb-3">{{ labelText() }}…</p>
+      <div
+        class="progress mb-2"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="displayPercent()"
+        [attr.aria-label]="progressAria()"
+      >
+        <div
+          class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+          [style.width.%]="displayPercent()"
+        ></div>
+      </div>
+      <div class="fw-semibold" data-testid="farm-load-percent">{{ displayPercent() }}%</div>
+    </div>
+  </div>
+}
+
+@if (showTimeout()) {
+  <div class="farm-loading-panel card shadow-sm mb-0" role="alert">
+    <div class="card-body text-center">
+      <i class="bi bi-hourglass-bottom fs-1 text-warning d-block mb-2" aria-hidden="true"></i>
+      <h5 class="mb-1">Tải nông trại quá lâu</h5>
+      <p class="text-muted small mb-2">
+        Đã chờ quá {{ timeoutSeconds() }} giây mà nông trại vẫn chưa tải xong. Mạng có thể đang
+        chậm hoặc máy chủ đang bận.
+      </p>
+      @if (failedCount() > 0) {
+        <ul class="list-unstyled small text-start mb-3">
+          @for (item of failedItems(); track item.id) {
+            <li>
+              <i class="bi bi-x-circle text-danger me-1" aria-hidden="true"></i>{{ item.label }}
+              <span class="text-muted">— {{ item.error || 'Không tải được' }}</span>
+            </li>
+          }
+        </ul>
+      }
+      <button
+        type="button"
+        class="btn btn-primary"
+        data-testid="farm-load-retry"
+        [disabled]="retrying()"
+        (click)="onRetry()"
+      >
+        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+      </button>
+    </div>
+  </div>
+}
+
+@if (showError()) {
+  <div class="farm-loading-panel card shadow-sm mb-0" role="alert">
+    <div class="card-body text-center">
+      <i class="bi bi-exclamation-octagon fs-1 text-danger d-block mb-2" aria-hidden="true"></i>
+      <h5 class="mb-1">Không tải được nông trại</h5>
+      <p class="text-muted small mb-3">
+        {{ errorMessage() || 'Đã có lỗi khi tải dữ liệu nông trại.' }}
+      </p>
+      <button
+        type="button"
+        class="btn btn-primary"
+        data-testid="farm-load-retry"
+        [disabled]="retrying()"
+        (click)="onRetry()"
+      >
+        <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+      </button>
+    </div>
+  </div>
+}
+
+@if (showFailureNotice()) {
+  <div
+    class="farm-failure-notice alert alert-warning shadow-sm mb-0 py-2 px-3"
+    role="status"
+    aria-live="polite"
+    data-testid="farm-load-failures"
+  >
+    <div class="d-flex align-items-start gap-2">
+      <i class="bi bi-exclamation-triangle mt-1" aria-hidden="true"></i>
+      <div class="flex-grow-1 small">
+        <div class="fw-semibold">Một số hạng mục chưa tải được ({{ failedCount() }})</div>
+        <div class="mb-1">Nông trại vẫn dùng được, các hạng mục này tạm hiển thị bằng hình khối thay thế.</div>
+        <ul class="mb-2 ps-3">
+          @for (item of failedItems(); track item.id) {
+            <li>{{ item.label }}</li>
+          }
+        </ul>
+        <button
+          type="button"
+          class="btn btn-sm btn-warning"
+          [disabled]="retrying()"
+          (click)="onRetry()"
+        >
+          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại hạng mục lỗi
+        </button>
+      </div>
+      <button
+        type="button"
+        class="btn-close"
+        aria-label="Ẩn thông báo hạng mục tải lỗi"
+        (click)="dismissFailures()"
+      ></button>
+    </div>
+  </div>
+}

@@ -1,0 +1,20 @@
+// HUD phủ mép trên khung 3D — container phải là `position-relative`.
+// Nằm ngoài canvas nên luôn hiển thị ở mọi góc nhìn và mọi mức chất lượng (US-21).
+:host {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  pointer-events: none; // không chặn thao tác kéo/xoay camera
+}
+
+.hud-chip {
+  pointer-events: auto;
+  --bs-bg-opacity: 0.9;
+}
+
+// Chip hiển thị dạng `<button>` (số dư, huy hiệu, hộp thư) phải đạt vùng chạm tối thiểu
+// 44×44 px trên di động dù dùng `.btn-sm` hay icon đơn (US-38).
+.hud-chip.btn {
+  min-height: 44px;
+  min-width: 44px;
+}

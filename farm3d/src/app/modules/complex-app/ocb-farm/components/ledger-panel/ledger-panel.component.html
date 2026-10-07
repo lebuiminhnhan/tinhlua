@@ -1,0 +1,169 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="ledger-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-journal-text me-2 text-success" aria-hidden="true"></i>Lịch sử thu chi
+        </h5>
+        <button type="button" class="btn-close" aria-label="Đóng lịch sử thu chi" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Số Hạt OCB hiện tại luôn hiển thị, kể cả khi tải lịch sử lỗi (US-21). -->
+        <div class="d-flex flex-wrap align-items-center gap-3 border rounded p-3 mb-3 bg-body-tertiary">
+          <div class="me-auto">
+            <div class="text-muted small">Số Hạt OCB hiện tại</div>
+            <div class="fs-4 fw-semibold text-success" data-testid="ledger-balance">
+              <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ balanceLabel() }}
+            </div>
+          </div>
+          @if (status() === 'success' && rows().length > 0) {
+            <div class="small text-end" data-testid="ledger-page-summary">
+              <div class="text-muted">Trang này</div>
+              <span class="badge text-bg-success me-1">
+                <i class="bi bi-arrow-down-left me-1" aria-hidden="true"></i>Thu +{{ pageSummary().income }}
+              </span>
+              <span class="badge text-bg-danger">
+                <i class="bi bi-arrow-up-right me-1" aria-hidden="true"></i>Chi −{{ pageSummary().spend }}
+              </span>
+            </div>
+          }
+        </div>
+
+        @switch (status()) {
+          @case ('loading') {
+            <div class="text-center text-muted py-5" role="status" aria-live="polite" data-testid="ledger-loading">
+              <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải lịch sử thu chi…
+            </div>
+          }
+          @case ('error') {
+            <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2" role="alert" data-testid="ledger-error">
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                Không tải được lịch sử thu chi.
+                @if (errorMessage()) {
+                  <span class="small d-block">{{ errorMessage() }}</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-testid="ledger-retry" (click)="retry()">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+              </button>
+            </div>
+          }
+          @default {
+            @if (isEmpty()) {
+              <div class="text-center py-4" data-testid="ledger-empty">
+                <i class="bi bi-journal-plus fs-1 text-muted" aria-hidden="true"></i>
+                <p class="fw-semibold mt-2 mb-1">Bạn chưa có giao dịch nào</p>
+                <p class="text-muted small mb-3">Phát sinh giao dịch đầu tiên bằng một trong các cách sau:</p>
+                <ul class="list-unstyled d-inline-block text-start mb-0">
+                  @for (tip of emptyTips; track tip.text) {
+                    <li class="mb-2"><i class="{{ tip.icon }} text-success me-2" aria-hidden="true"></i>{{ tip.text }}</li>
+                  }
+                </ul>
+              </div>
+            } @else {
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0" data-testid="ledger-table">
+                  <caption class="visually-hidden">Lịch sử thu chi, giao dịch mới nhất ở trên cùng</caption>
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col" class="text-nowrap">Thời điểm</th>
+                      <th scope="col">Nội dung</th>
+                      <th scope="col" class="text-end text-nowrap">Thay đổi</th>
+                      <th scope="col" class="text-end text-nowrap">Số dư sau</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of rows(); track row.id) {
+                      <tr data-testid="ledger-row">
+                        <td class="text-nowrap small">
+                          <time [attr.datetime]="row.isoTime">{{ row.timeLabel }}</time>
+                        </td>
+                        <td>
+                          <div>{{ row.title }}</div>
+                          @if (row.note) {
+                            <div class="small text-muted">{{ row.note }}</div>
+                          }
+                        </td>
+                        <td class="text-end text-nowrap">
+                          @switch (row.direction) {
+                            @case ('in') {
+                              <span class="badge text-bg-success" [attr.aria-label]="'Tăng ' + row.amountAbs + ' Hạt OCB'">
+                                <i class="bi bi-plus-lg" aria-hidden="true"></i>{{ row.amountLabel }}
+                              </span>
+                            }
+                            @case ('out') {
+                              <span class="badge text-bg-danger" [attr.aria-label]="'Giảm ' + row.amountAbs + ' Hạt OCB'">
+                                <i class="bi bi-dash-lg" aria-hidden="true"></i>{{ row.amountLabel }}
+                              </span>
+                            }
+                            @default {
+                              <span class="badge text-bg-secondary">0</span>
+                            }
+                          }
+                        </td>
+                        <td class="text-end text-nowrap fw-semibold">{{ row.balanceLabel }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+        }
+      </div>
+
+      @if (!isEmpty() && totalPages() > 1) {
+        <div class="modal-footer justify-content-between flex-wrap gap-2">
+          <span class="small text-muted" data-testid="ledger-range">
+            @if (rangeLabel()) {
+              Giao dịch {{ rangeLabel() }}
+            }
+          </span>
+          <nav aria-label="Phân trang lịch sử thu chi">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item" [class.disabled]="!hasPrev() || status() === 'loading'">
+                <button type="button" class="page-link" aria-label="Trang trước" [disabled]="!hasPrev() || status() === 'loading'" (click)="prev()">
+                  <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
+              </li>
+              @for (p of pageItems(); track $index) {
+                @if (p === null) {
+                  <li class="page-item disabled"><span class="page-link">…</span></li>
+                } @else {
+                  <li class="page-item" [class.active]="p === page()">
+                    <button
+                      type="button"
+                      class="page-link"
+                      [attr.aria-current]="p === page() ? 'page' : null"
+                      [attr.aria-label]="'Trang ' + p"
+                      [disabled]="status() === 'loading'"
+                      (click)="goTo(p)"
+                    >
+                      {{ p }}
+                    </button>
+                  </li>
+                }
+              }
+              <li class="page-item" [class.disabled]="!hasNext() || status() === 'loading'">
+                <button type="button" class="page-link" aria-label="Trang sau" [disabled]="!hasNext() || status() === 'loading'" (click)="next()">
+                  <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      }
+    </div>
+  </div>
+</div>

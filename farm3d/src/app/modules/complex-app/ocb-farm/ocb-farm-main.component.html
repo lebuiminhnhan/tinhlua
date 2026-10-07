@@ -1,0 +1,521 @@
+<div class="container-fluid px-0">
+  <!-- Tiêu đề trang + badge kết nối — ẩn khi Fullscreen_Mode đang chạy (AC 1.2): chỉ còn
+       khung 3D (và nút thoát) khi fullscreen. Cinema_Mode KHÔNG còn ẩn phần này — nó hiện
+       là cửa sổ nổi (PiP) riêng, phần còn lại của trang vẫn hiển thị và tương tác được. -->
+  @if (!isFullscreen()) {
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <div>
+        <h4 class="mb-0">
+          <i class="bi bi-tree me-2 text-success" aria-hidden="true"></i>Nông trại OCB
+        </h4>
+        <p class="text-muted small mb-0">
+          Nuôi vật nuôi, trồng cây hoa và chăm Cây OCB phát triển theo thâm niên làm việc.
+        </p>
+      </div>
+      @if (farmReady()) {
+        <span
+          class="badge {{ connectionBadge().cls }}"
+          role="status"
+          aria-live="polite"
+          data-testid="farm-connection"
+        >
+          <i class="{{ connectionBadge().icon }} me-1" aria-hidden="true"></i
+          >{{ connectionBadge().label }}
+        </span>
+      }
+    </div>
+
+    @if (actionError(); as err) {
+      <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+        <i class="bi bi-exclamation-circle mt-1" aria-hidden="true"></i>
+        <div class="flex-grow-1">
+          <div>{{ err.message }}</div>
+          @if (err.cancelled.length > 0) {
+            <div class="small mt-1">
+              Thao tác chưa được thực hiện:
+              @for (c of err.cancelled; track c.idempotency_key + c.command) {
+                <span class="badge text-bg-light border ms-1">{{ c.label }}</span>
+              }
+            </div>
+          }
+        </div>
+        <button
+          type="button"
+          class="btn-close"
+          aria-label="Đóng thông báo lỗi"
+          (click)="dismissActionError()"
+        ></button>
+      </div>
+    }
+  }
+
+  <div class="card">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2" [class.d-none]="isFullscreen()">
+      <h3 class="card-title mb-0 me-auto">
+        {{ farmName() }}
+        @if (ownerName()) {
+          <small class="text-muted fw-normal ms-1">— {{ ownerName() }}</small>
+        }
+      </h3>
+
+      @if (farmReady() && !isFullscreen()) {
+        <!-- Mục trợ giúp: mở lại hướng dẫn 5 bước từ bước đầu (US-1). -->
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          data-testid="farm-help"
+          aria-haspopup="dialog"
+          (click)="openGuide()"
+        >
+          <i class="bi bi-question-circle me-1" aria-hidden="true"></i>Hướng dẫn
+        </button>
+        <!-- Cài đặt: âm thanh, khoá cảnh, chất lượng đồ hoạ (US-30, US-32, US-36). -->
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          data-testid="farm-open-settings"
+          aria-haspopup="dialog"
+          (click)="openSettings()"
+        >
+          <i class="bi bi-gear me-1" aria-hidden="true"></i>Cài đặt
+        </button>
+        <!-- Thông tin Cây OCB: thâm niên, nhánh, dòng thời gian, kỷ niệm (US-4..US-7, US-51).
+             Khi ghé thăm: xem Cây OCB của đồng nghiệp (chỉ xem). -->
+        @if (!isVisiting() || visitHasFarm()) {
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-success"
+            data-testid="farm-open-tree"
+            aria-haspopup="dialog"
+            (click)="openTreePanel()"
+          >
+            <i class="bi bi-tree-fill me-1" aria-hidden="true"></i>{{ isVisiting() ? 'Cây OCB đồng nghiệp' : 'Cây OCB' }}
+            @if (treeOptions()?.blooming) {
+              <span class="badge text-bg-danger ms-1">Kỷ niệm</span>
+            }
+          </button>
+        }
+        @if (!isVisiting()) {
+          <!-- Cửa hàng: vật nuôi / hạt giống / trang trí (US-10, US-16, US-34). -->
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-success"
+            data-testid="farm-open-shop"
+            aria-haspopup="dialog"
+            (click)="openShop()"
+          >
+            <i class="bi bi-shop me-1" aria-hidden="true"></i>Cửa hàng
+            @if (me()?.environment?.season_theme) {
+              <span class="badge text-bg-warning ms-1">Mùa lễ</span>
+            }
+          </button>
+          <!-- Kho & bán sản phẩm (US-22). -->
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-success"
+            data-testid="farm-open-inventory"
+            aria-haspopup="dialog"
+            (click)="openInventory()"
+          >
+            <i class="bi bi-box-seam me-1" aria-hidden="true"></i>Kho
+          </button>
+          <!-- Mở rộng vùng đất (US-24). -->
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-success"
+            data-testid="farm-open-expand"
+            aria-haspopup="dialog"
+            (click)="openExpand()"
+          >
+            <i class="bi bi-arrows-fullscreen me-1" aria-hidden="true"></i>Mở rộng đất
+          </button>
+          <!-- Bảng xếp hạng: 3 tiêu chí, lọc phòng ban (US-28). -->
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-success"
+            data-testid="farm-open-leaderboard"
+            aria-haspopup="dialog"
+            (click)="openLeaderboard()"
+          >
+            <i class="bi bi-trophy me-1" aria-hidden="true"></i>Xếp hạng
+          </button>
+          <!-- Ghé thăm nông trại đồng nghiệp: tìm theo tên/phòng ban (US-26). -->
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-success"
+            data-testid="farm-open-visit-browser"
+            aria-haspopup="dialog"
+            (click)="openVisitBrowser()"
+          >
+            <i class="bi bi-binoculars me-1" aria-hidden="true"></i>Ghé thăm
+          </button>
+          <!-- Chế độ Cinema: khung 3D tách thành cửa sổ nổi (PiP) có thể kéo thả, camera tự
+               chuyển động; phần còn lại của trang (toolbar, HUD, panel) vẫn hiển thị bình
+               thường. -->
+          <!-- @if (!cinemaMode()) {
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              data-testid="farm-enter-cinema"
+              (click)="enterCinemaMode()"
+            >
+              <i class="bi bi-film me-1" aria-hidden="true"></i>Chế độ Cinema
+            </button>
+          } -->
+        }
+        <!-- Hành động chính: check-in và thu hoạch (track analytics `farm_action`). -->
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-success"
+          data-testid="farm-checkin"
+          aria-haspopup="dialog"
+          [disabled]="isVisiting()"
+          [attr.aria-busy]="busyAction() === 'checkin'"
+          (click)="openCheckin()"
+        >
+          @if (busyAction() === 'checkin') {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+          } @else {
+            <i class="bi bi-calendar-check me-1" aria-hidden="true"></i>
+          }
+          @if (checkinClaimed()) {
+            Đã check-in hôm nay
+          } @else {
+            Check-in
+          }
+          @if (checkinStreak() > 0) {
+            <span class="badge text-bg-success ms-1" [attr.aria-label]="'Chuỗi ' + checkinStreak() + ' ngày'"
+              >{{ checkinStreak() }} ngày</span
+            >
+          }
+        </button>
+        <!-- Thao tác hàng loạt kèm hộp xác nhận (US-11, US-13, US-18); vô hiệu kèm lý do khi không có đối tượng phù hợp. -->
+        @if (!isVisiting()) {
+          <!-- Tách rời từng nút (không dùng btn-group) để không bị dính liền nhau. -->
+          <div class="d-flex flex-wrap gap-2" role="group" aria-label="Thao tác hàng loạt">
+            @for (b of interaction.bulkButtons(); track b.id) {
+              <span class="d-inline-flex" [title]="b.s.disabledReason ?? ''">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success"
+                  aria-haspopup="dialog"
+                  [attr.data-testid]="b.testId"
+                  [disabled]="!canAct() || b.s.disabledReason !== null"
+                  [attr.aria-describedby]="b.s.disabledReason ? 'farm-bulk-reason-' + b.id : null"
+                  (click)="interaction.openBulk(b.id)"
+                >
+                  <i class="{{ b.icon }} me-1" aria-hidden="true"></i>{{ b.label }}
+                  @if (b.s.count > 0) {
+                    <span class="badge text-bg-light ms-1">{{ b.s.count }}</span>
+                  }
+                </button>
+                @if (b.s.disabledReason) {
+                  <span class="visually-hidden" [id]="'farm-bulk-reason-' + b.id">{{ b.s.disabledReason }}</span>
+                }
+              </span>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <div class="card-body p-0">
+      <div
+        class="farm-stage position-relative"
+        [class.farm-stage-pip]="cinemaMode()"
+        [style.left.px]="cinemaMode() ? pipX() : null"
+        [style.top.px]="cinemaMode() ? pipY() : null"
+      >
+        <!-- HUD (số dư, kho, lối tắt lịch sử/thành tựu/hộp thư) — ẩn khi Fullscreen_Mode
+             (AC 1.2) hoặc khi Cinema_Mode đang chạy (PiP quá nhỏ để chứa HUD đầy đủ); HUD
+             vẫn hiển thị trong phần còn lại của trang qua khối riêng ngay dưới `.farm-stage`
+             (xem khối `app-farm-hud` thứ hai bên dưới `@if (cinemaMode())`). -->
+        @if (farmReady() && !isVisiting() && !isFullscreen() && !cinemaMode()) {
+          <app-farm-hud
+            [balance]="balance()"
+            [state]="state()"
+            [limits]="me()?.limits ?? null"
+            [environment]="me()?.environment ?? null"
+            [sceneLock]="sceneLock()"
+            [farmName]="farmName()"
+            [syncing]="hasPending()"
+            (ledgerRequested)="openLedger()"
+            (badgesRequested)="openBadges()"
+            (inboxRequested)="openInbox()"
+          />
+        }
+
+        <!-- Thanh kéo thả (handle) + nút thoát của cửa sổ Cinema_Mode (PiP) — chỉ render khi
+             Cinema_Mode đang chạy. Kéo bằng thanh này chỉ di chuyển cửa sổ, KHÔNG tính là
+             tương tác với khung 3D (không kích hoạt `cinemaInterrupted`). -->
+        @if (cinemaMode()) {
+          <div
+            class="farm-cinema-pip-handle d-flex align-items-center gap-2 px-2"
+            data-testid="farm-cinema-pip-handle"
+            (pointerdown)="onPipDragStart($event)"
+          >
+            <i class="bi bi-film" aria-hidden="true"></i>
+            <span class="small flex-grow-1 text-truncate">Chế độ Cinema</span>
+            <button
+              type="button"
+              class="btn btn-sm btn-light farm-cinema-exit"
+              data-testid="farm-cinema-exit"
+              aria-label="Thoát chế độ Cinema"
+              title="Thoát chế độ Cinema"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="exitCinemaMode()"
+            >
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </div>
+        }
+
+        <!-- Chế độ ghé thăm: nhãn liên tục, lối thoát, chỉ còn giúp đỡ & lời chúc (US-8, US-26,
+             US-27, BR-21). Ẩn khi Cinema_Mode đang chạy — PiP quá nhỏ, nhãn hiển thị lại
+             bình thường khi thoát Cinema_Mode. -->
+        @if (isVisiting() && !cinemaMode() && visitTarget(); as target) {
+          <app-visit-toolbar
+            [target]="target"
+            [hasFarm]="visitHasFarm()"
+            [state]="state()"
+            [help]="visitHelp()"
+            [greetingMaxLen]="visitGreetingMaxLen()"
+            (exited)="exitVisit()"
+            (helped)="onVisitHelped($event)"
+            (greeted)="onVisitGreeted()"
+          />
+        }
+
+        <div class="farm-canvas-host" data-testid="farm-canvas-host">
+          @if (needsOnboarding()) {
+            <!-- Khởi tạo nông trại: chặn mọi hoạt động cho tới khi xác nhận ngày vào làm (US-1..US-3). -->
+            <app-onboarding-wizard
+              mode="setup"
+              data-testid="farm-onboarding-slot"
+              (completed)="onOnboardingCompleted()"
+            />
+          } @else if (farmReady()) {
+            <!-- Khung 3D: cử chỉ chuột/cảm ứng, 4 nút xoay, phóng, về giữa (US-36, US-38). -->
+            <app-farm-canvas
+              [interactive]="!guideOpen() && !treePanelOpen() && !ledgerOpen() && !leaderboardOpen() && !checkinDialogOpen() && !offlineSummaryOpen() && !shopOpen() && !inventoryOpen() && !expandOpen() && !visitBrowserOpen() && !interaction.blocking()"
+              [treeOptions]="treeOptions()"
+              [markers]="interaction.markers()"
+              [selectionCell]="interaction.selectionCell()"
+              [moveTargets]="interaction.moveTargetCells()"
+              [effectEvent]="interaction.effectEvent()"
+              (tapped)="onCanvasTap($event)"
+              (cinemaInterrupted)="exitCinemaMode()"
+            />
+          }
+        </div>
+
+        <!-- Chế độ di chuyển: chọn ô đích được tô xanh; ô không hợp lệ → nêu lý do, giữ vị trí
+             (US-15, US-34). Ẩn khi Cinema_Mode đang chạy — PiP quá nhỏ để hiển thị banner. -->
+        @if (!cinemaMode() && interaction.moveMode(); as mv) {
+          <div class="position-absolute start-50 translate-middle-x mt-2 top-0 z-3 w-100 px-2" style="max-width: 32rem" data-testid="farm-move-banner">
+            <div class="alert alert-info shadow-sm d-flex align-items-center gap-2 py-2 mb-0" role="status" aria-live="polite">
+              <i class="bi bi-arrows-move" aria-hidden="true"></i>
+              <div class="small flex-grow-1">
+                <div>Chạm vào ô được tô xanh để chuyển <strong>{{ mv.label }}</strong> (đang ở ô {{ mv.fromCell }}).</div>
+                @if (interaction.moveError(); as reason) {
+                  <div class="text-danger" data-testid="farm-move-error">
+                    <i class="bi bi-x-circle me-1" aria-hidden="true"></i>{{ reason }} Vị trí cũ được giữ nguyên.
+                  </div>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="interaction.cancelMove()">Huỷ</button>
+            </div>
+          </div>
+        }
+
+        <app-farm-loading-overlay
+          [phase]="loader.phase()"
+          [percent]="loader.percent()"
+          [session]="loader.session()"
+          [currentLabel]="loader.currentLabel()"
+          [failedItems]="overlayFailedItems()"
+          [errorMessage]="loadErrorMessage()"
+          [timeoutSeconds]="loader.timeoutSeconds()"
+          [retrying]="retrying()"
+          (retry)="retryLoad()"
+        />
+      </div>
+
+      <!-- Cinema_Mode đang chạy: `.farm-stage` trở thành cửa sổ nổi (PiP) nhỏ, không còn
+           chỗ cho HUD/visit-toolbar đầy đủ. Hiển thị lại HUD ở vị trí thường của trang
+           (dưới card-body, không bị kéo theo PiP) để số dư/kho/lối tắt vẫn dùng được. -->
+      @if (cinemaMode() && farmReady() && !isVisiting() && !isFullscreen()) {
+        <div class="position-relative farm-stage-hud-anchor">
+          <app-farm-hud
+            [balance]="balance()"
+            [state]="state()"
+            [limits]="me()?.limits ?? null"
+            [environment]="me()?.environment ?? null"
+            [sceneLock]="sceneLock()"
+            [farmName]="farmName()"
+            [syncing]="hasPending()"
+            (ledgerRequested)="openLedger()"
+            (badgesRequested)="openBadges()"
+            (inboxRequested)="openInbox()"
+          />
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (treePanelOpen() && farmReady() && (me() || visitOwner())) {
+    <app-ocb-tree-panel
+      [me]="isVisiting() ? null : me()"
+      [visitorOwner]="isVisiting() ? visitOwner() : null"
+      [tree]="state()?.tree ?? null"
+      [todayIso]="todayIso()"
+      [config]="configValue()"
+      [initialTab]="treePanelTab()"
+      [selectedBranchIndex]="selectedBranchIndex()"
+      [canPick]="canAct()"
+      [picking]="busyAction() === 'anniversary'"
+      [claimedYear]="anniversaryClaimedYear()"
+      [pickError]="anniversaryError()"
+      (pickFruit)="pickAnniversaryFruit($event)"
+      (closed)="closeTreePanel()"
+    />
+  }
+
+  @if (shopOpen() && farmReady() && me(); as m) {
+    <app-shop-panel
+      [state]="state()"
+      [balance]="balance()"
+      [limits]="m.limits"
+      [config]="configValue()"
+      [seasonTheme]="m.environment.season_theme"
+      [seasonName]="m.environment.season_theme_name"
+      [seniorityMonths]="m.seniority.total_months"
+      [preferredCell]="shopPreferredCell()"
+      [initialTab]="shopTab()"
+      [canBuy]="canShop()"
+      [buying]="shopBuying()"
+      [buyError]="shopError()"
+      [decorCatalog]="decorCatalog()"
+      (purchase)="buyFromShop($event)"
+      (closed)="closeShop()"
+    />
+  }
+
+  @if (inventoryOpen() && farmReady() && me(); as m) {
+    <app-inventory-panel
+      [state]="state()"
+      [balance]="balance()"
+      [limits]="m.limits"
+      [config]="configValue()"
+      [canSell]="canSellInventory()"
+      [selling]="inventorySelling()"
+      [refreshing]="inventoryRefreshing()"
+      [sellError]="inventoryError()"
+      [notice]="inventoryNotice()"
+      (sell)="sellFromInventory($event)"
+      (refresh)="refreshInventory()"
+      (closed)="closeInventory()"
+    />
+  }
+
+  @if (expandOpen() && farmReady()) {
+    <app-expand-panel
+      [state]="state()"
+      [balance]="balance()"
+      [config]="configValue()"
+      [preferredPlotId]="expandPreferredPlot()"
+      [canExpand]="canExpand()"
+      [expanding]="expanding()"
+      [expandError]="expandError()"
+      (expand)="expandPlot($event)"
+      (closed)="closeExpand()"
+    />
+  }
+
+  @if (ledgerOpen() && farmReady()) {
+    <app-ledger-panel [balance]="balance()" [pageSize]="ledgerPageSize()" (closed)="closeLedger()" />
+  }
+
+  @if (inboxOpen() && farmReady()) {
+    <app-inbox-panel (markedRead)="onInboxMarkedRead()" (closed)="closeInbox()" />
+  }
+
+  @if (leaderboardOpen() && farmReady()) {
+    <app-leaderboard-panel
+      [selfDepartmentId]="me()?.owner?.department_id ?? null"
+      [selfDepartmentName]="me()?.owner?.department_name ?? null"
+      (closed)="closeLeaderboard()"
+    />
+  }
+
+  <!-- Danh sách nông trại đồng nghiệp để ghé thăm (US-26). -->
+  @if (visitBrowserOpen() && farmReady()) {
+    <app-visit-browser (selected)="onVisitSelected($event)" (closed)="closeVisitBrowser()" />
+  }
+
+  @if (settingsOpen() && farmReady()) {
+    <app-settings-panel (closed)="closeSettings()" />
+  }
+
+  @if (achievementsOpen() && farmReady()) {
+    <app-achievement-panel (closed)="closeBadges()" />
+  }
+
+  @if (guideOpen() && farmReady()) {
+    <app-onboarding-wizard mode="guide" (closed)="closeGuide()" />
+  }
+
+  <!-- Tổng kết tích lũy khi vắng mặt (US-23): chỉ mở khi có sản phẩm tích lũy. -->
+  @if (offlineSummaryOpen() && farmReady() && offlineSummary(); as summary) {
+    <app-offline-summary-dialog
+      [summary]="summary"
+      [state]="state()"
+      [canHarvest]="canAct()"
+      [harvesting]="busyAction() === 'harvest'"
+      [error]="offlineError()"
+      (harvestAll)="harvestAll()"
+      (closed)="closeOfflineSummary()"
+    />
+  }
+
+  <!-- Hộp thưởng check-in (US-25): hiển thị sau bảng tổng kết để không chồng hộp thoại. -->
+  @if (checkinDialogOpen() && !offlineSummaryOpen() && farmReady() && checkinStatus(); as status) {
+    <app-checkin-dialog
+      [status]="status"
+      [todayIso]="todayIso()"
+      [canClaim]="canCheckin()"
+      [claiming]="busyAction() === 'checkin'"
+      [error]="checkinError()"
+      [receivedReward]="checkinReceived()"
+      (claim)="claimCheckin()"
+      (closed)="closeCheckin()"
+    />
+  }
+
+  <!-- Menu tương tác trên vật nuôi / cây trồng / trang trí đang chọn (13.6). -->
+  @if (farmReady() && interaction.menuOpen() && interaction.detail(); as detail) {
+    <app-entity-action-menu
+      [detail]="detail"
+      [clientX]="interaction.menuPosition().x"
+      [clientY]="interaction.menuPosition().y"
+      [canAct]="canAct()"
+      [busyAction]="interaction.busyAction()"
+      [error]="interaction.menuError()"
+      (action)="interaction.runAction($event)"
+      (closed)="interaction.closeMenu()"
+    />
+  }
+
+  <!-- Xác nhận thao tác hàng loạt / bán vật nuôi, vật trang trí (US-11, US-13, US-15, US-18, US-34). -->
+  @if (farmReady() && interaction.confirmContent(); as content) {
+    <app-farm-confirm-dialog
+      [content]="content"
+      [busy]="interaction.confirmBusy()"
+      [canConfirm]="interaction.confirmCanSubmit()"
+      [error]="interaction.confirmError()"
+      [result]="interaction.confirmResult()"
+      (confirm)="interaction.submitConfirm()"
+      (closed)="interaction.closeConfirm()"
+    />
+  }
+</div>

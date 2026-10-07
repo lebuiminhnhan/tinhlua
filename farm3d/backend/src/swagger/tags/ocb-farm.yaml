@@ -1,0 +1,1205 @@
+﻿tags:
+  - name: OCB Farm
+    description: >-
+      Nông trại OCB — ứng dụng restricted, yêu cầu quyền truy cập app
+      `ocb-farm`. Toàn bộ endpoint yêu cầu xác thực và (trừ admin) một bản
+      ghi cấp quyền `app_permissions` khớp user hoặc phòng ban. Nhóm
+      `/ocb-farm/admin/*` yêu cầu thêm vai trò `admin` (chuỗi middleware
+      `authMiddleware` → `farmAccessMiddleware` → `adminMiddleware`).
+
+paths:
+  /ocb-farm/config:
+    get:
+      tags: [OCB Farm]
+      summary: Cấu hình cân bằng game đang áp dụng
+      description: >-
+        Trả toàn bộ thông số cấu hình (`farm_config`) để client hiển thị giá
+        cả, thời gian và các hạn mức hiện hành. Dữ liệu được cache trong tiến
+        trình backend — `refreshed_at` cho biết lần nạp cache gần nhất.
+      responses:
+        '200':
+          description: Cấu hình đang áp dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ocb-farm/me:
+    get:
+      tags: [OCB Farm]
+      summary: Trạng thái nông trại của tôi (server tick mỗi lần gọi)
+      description: >-
+        Mỗi lần gọi, server tick trạng thái từ `last_tick_at` tới hiện tại
+        (độ no vật nuôi giảm về sàn, tích lũy sản phẩm theo thời gian vắng
+        mặt, tự tưới cây theo chu kỳ mưa...) trước khi trả về — client không
+        cần tự mô phỏng thời gian trôi qua. Khi nhân viên chưa gọi
+        `POST /me/init`, trả `initialized: false` để frontend mở màn hình
+        khởi tạo (`onboarding-wizard`).
+      responses:
+        '200':
+          description: Trạng thái nông trại (đã tick) hoặc tín hiệu chưa khởi tạo
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/FarmMeResponse'
+                  - $ref: '#/components/schemas/FarmMeUninitializedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ocb-farm/me/init:
+    post:
+      tags: [OCB Farm]
+      summary: Khởi tạo nông trại của tôi (idempotent theo user_id)
+      description: >-
+        Tạo nông trại khởi điểm cho nhân viên đang đăng nhập. Idempotent theo
+        `user_id` — gọi đồng thời từ hai thiết bị chỉ tạo đúng một nông
+        trại; phiên "thua cuộc đua" nhận lại đúng nông trại đã được tạo
+        (không phải lỗi). `join_date` phải nằm trong khoảng từ 01/01 năm
+        thành lập OCB đến hôm nay (giờ Việt Nam UTC+7).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmInitRequest'
+      responses:
+        '200':
+          description: Khởi tạo thành công (hoặc đã tồn tại từ trước — vẫn coi là thành công)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmInitResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Ngày vào làm không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                joinDateRequired:
+                  summary: Thiếu ngày vào làm
+                  value:
+                    error: true
+                    code: JOIN_DATE_REQUIRED
+                    message: Vui lòng chọn ngày vào làm.
+                joinDateOutOfRange:
+                  summary: Ngày vào làm ngoài khoảng hợp lệ
+                  value:
+                    error: true
+                    code: JOIN_DATE_OUT_OF_RANGE
+                    message: Ngày vào làm phải trong khoảng từ 1996-01-01 đến 2026-01-01.
+                    details:
+                      min_date: '1996-01-01'
+                      max_date: '2026-01-01'
+
+  /ocb-farm/me/join-date-suggestion:
+    get:
+      tags: [OCB Farm]
+      summary: Gợi ý ngày vào làm cho màn hình khởi tạo
+      description: >-
+        Tra ngày vào làm từ dữ liệu nhân sự (nếu có). Hàm này không bao giờ
+        trả lỗi — mọi trường hợp không tra được (không có dữ liệu, hết thời
+        gian chờ, giá trị ngoài khoảng hợp lệ) đều trả `available: false`
+        kèm `reason`, không chặn nhân viên tự nhập ngày vào làm.
+      responses:
+        '200':
+          description: Gợi ý ngày vào làm (có thể không khả dụng)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmJoinDateSuggestion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ocb-farm/commands:
+    post:
+      tags: [OCB Farm]
+      summary: Endpoint lệnh duy nhất cho mọi hành động thay đổi nông trại
+      description: >-
+        Mọi thay đổi trạng thái nông trại (mua/bán/cho ăn/tưới/thu hoạch/
+        check-in/...) đi qua endpoint này (D1, server-authoritative). Server
+        tick trạng thái từ `last_tick_at` tới hiện tại trước khi áp lệnh, rồi
+        kiểm tra `version` (khóa lạc quan — lệch thì 409), áp lệnh theo
+        `command`, kiểm tra bất biến nghiệp vụ (lệnh không hợp lệ thì 422),
+        và cuối cùng đánh giá thành tựu. `idempotency_key` bảo đảm gửi lại
+        cùng request không nhân đôi hiệu lực.
+
+
+        Danh mục đầy đủ 23 mã lệnh, theo nhóm module xử lý ở backend
+        (`FARM_COMMAND_GROUPS`):
+
+
+        | Nhóm | Mã lệnh |
+        |------|---------|
+        | Vật nuôi | `BUY_ANIMAL`, `FEED_ANIMAL`, `FEED_ALL`, `HARVEST_ANIMAL`, `HARVEST_ALL`, `MOVE_ENTITY`, `SELL_ANIMAL` |
+        | Cây trồng | `PLANT_SEED`, `WATER_PLANT`, `WATER_ALL`, `FERTILIZE_PLANT`, `HARVEST_PLANT` |
+        | Vật phẩm hỗ trợ | `USE_GROWTH_POTION` (`{ animal_id }` — hoàn tất ngay chu kỳ sản phẩm, giá `boost_price_growth_potion`), `USE_SUPER_FERTILIZER` (`{ plant_id }` — lên ngay giai đoạn kế tiếp, giá `boost_price_super_fertilizer`) |
+        | Kinh tế | `SELL_PRODUCT`, `EXPAND_PLOT` |
+        | Trang trí | `BUY_DECOR`, `MOVE_DECOR`, `ROTATE_DECOR`, `SELL_DECOR`, `RENAME_FARM` |
+
+        `BUY_DECOR.payload.kind` là tên nhóm (`fence`, `path`, `lamp`, `bench`, `well`,
+        `nameplate`, `seasonal`, `tree`, `bush`, `flowerbed`, `crop`, `produce`) hoặc
+        `<nhóm>_<biến thể>` khai báo trong manifest 3D (ví dụ `lamp_stand`, `tree_oak`);
+        giá lấy theo nhóm (`decor_price_<nhóm>`).
+
+        Mọi nông trại có sẵn vùng 7 — ao khởi đầu 2×2 (4 ô nước) đã mở; vùng 8 và 14 là
+        ao mở rộng mua bằng `EXPAND_PLOT`.
+        | Hằng ngày | `CLAIM_CHECKIN`, `PICK_ANNIVERSARY_FRUIT`, `SELECT_BADGES` |
+        | Cài đặt | `UPDATE_SETTINGS` |
+
+
+        Xem `examples` của request body dưới đây cho payload cụ thể của một
+        số lệnh đại diện mỗi nhóm.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmCommandRequest'
+            examples:
+              buyAnimal:
+                summary: 'BUY_ANIMAL — mua một con gà vào ô (3,4)'
+                value:
+                  command: BUY_ANIMAL
+                  payload:
+                    species: chicken
+                    cell: '3,4'
+                  version: 12
+                  idempotency_key: '8f14e45f-ceea-4c5d-8f1b-111111111111'
+              plantSeed:
+                summary: 'PLANT_SEED — trồng cây cam vào ô (5,2)'
+                value:
+                  command: PLANT_SEED
+                  payload:
+                    kind: orange
+                    cell: '5,2'
+                  version: 12
+                  idempotency_key: '8f14e45f-ceea-4c5d-8f1b-222222222222'
+              sellProduct:
+                summary: 'SELL_PRODUCT — bán 10 quả trứng, đã thấy 10 quả lúc mở kho'
+                value:
+                  command: SELL_PRODUCT
+                  payload:
+                    product: egg
+                    quantity: 10
+                    expected_quantity: 10
+                  version: 12
+                  idempotency_key: '8f14e45f-ceea-4c5d-8f1b-333333333333'
+              claimCheckin:
+                summary: 'CLAIM_CHECKIN — nhận điểm danh hôm nay'
+                value:
+                  command: CLAIM_CHECKIN
+                  payload: {}
+                  version: 12
+                  idempotency_key: '8f14e45f-ceea-4c5d-8f1b-444444444444'
+              renameFarm:
+                summary: 'RENAME_FARM — đổi tên nông trại'
+                value:
+                  command: RENAME_FARM
+                  payload:
+                    farm_name: 'Nông trại Hạt Giống'
+                  version: 12
+                  idempotency_key: '8f14e45f-ceea-4c5d-8f1b-555555555555'
+      responses:
+        '200':
+          description: Lệnh được áp thành công (hoặc lặp lại cùng idempotency_key của một lệnh đã thành công trước đó)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmCommandSuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Version client gửi lệch với version hiện tại của nông trại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmVersionConflictResponse'
+        '422':
+          description: Lệnh không hợp lệ theo nghiệp vụ, hoặc nông trại chưa được khởi tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                insufficientSeeds:
+                  summary: Không đủ Hạt OCB
+                  value:
+                    error: true
+                    code: INSUFFICIENT_SEEDS
+                    message: Không đủ Hạt OCB để thực hiện lệnh này.
+                    details:
+                      required: 150
+                      balance: 80
+                animalLimitReached:
+                  summary: Đã đạt giới hạn số vật nuôi
+                  value:
+                    error: true
+                    code: ANIMAL_LIMIT_REACHED
+                    message: Đã đạt giới hạn số vật nuôi tối đa.
+                    details:
+                      current: 20
+                      max: 20
+                quantityChanged:
+                  summary: Số lượng trong kho đã thay đổi (bán ở thiết bị khác)
+                  value:
+                    error: true
+                    code: QUANTITY_CHANGED
+                    message: Số lượng trong kho đã thay đổi, vui lòng mở lại kho.
+                    details:
+                      expected_quantity: 10
+                      actual_quantity: 6
+                checkinAlreadyClaimed:
+                  summary: Đã nhận điểm danh hôm nay
+                  value:
+                    error: true
+                    code: CHECKIN_ALREADY_CLAIMED
+                    message: Bạn đã nhận điểm danh hôm nay rồi.
+                versionConflictAsBusinessNote:
+                  summary: Nông trại chưa được khởi tạo
+                  value:
+                    error: true
+                    code: FARM_NOT_INITIALIZED
+                    message: Vui lòng khởi tạo nông trại trước khi thực hiện lệnh này.
+
+  /ocb-farm/me/ledger:
+    get:
+      tags: [OCB Farm]
+      summary: Lịch sử thu chi Hạt OCB của tôi (phân trang)
+      description: >-
+        Trả một trang lịch sử giao dịch (`farm_transactions`), sắp xếp theo
+        `occurred_at` giảm dần (mới nhất trước). Mỗi dòng gồm thời điểm, nội
+        dung (`kind`), số thay đổi (`amount` — dương là thu, âm là chi) và
+        số dư sau giao dịch (`balance_after`). Nhân viên chưa có giao dịch
+        nào vẫn nhận một trang hợp lệ với `entries: []`.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Số trang, bắt đầu từ 1. Không truyền thì dùng mặc định 1.
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: >-
+            Số dòng mỗi trang. Mặc định 20 khi không truyền; giá trị vượt
+            100 bị chặn về tối đa 100 (không coi là lỗi).
+      responses:
+        '200':
+          description: Một trang lịch sử thu chi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmLedgerPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: '`page` hoặc `page_size` không phải số nguyên dương'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                invalidPage:
+                  summary: Giá trị page không hợp lệ
+                  value:
+                    error: true
+                    code: INVALID_PAYLOAD
+                    message: Giá trị "page" phải là số nguyên dương.
+                    details:
+                      field: page
+                      value: '0'
+
+  /ocb-farm/me/achievements:
+    get:
+      tags: [OCB Farm]
+      summary: Toàn bộ danh mục thành tựu kèm trạng thái của tôi
+      description: >-
+        Trả toàn bộ thành tựu (6 loài, mốc thu hoạch, mốc chuỗi check-in,
+        mốc giúp đồng nghiệp, mốc thâm niên Cây OCB, mở hết vùng đất), mỗi
+        thành tựu kèm trạng thái đã đạt/ngày đạt (`unlocked`, `unlocked_at`)
+        hoặc tiến trình hiện tại so với mốc cần đạt (`progress`, `target`)
+        khi chưa đạt.
+      responses:
+        '200':
+          description: Danh sách toàn bộ thành tựu
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FarmAchievementView'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ==========================================================================
+  # Nhóm xã hội và xếp hạng (task 7.x) — ghé thăm, giúp đỡ, lời chúc, hộp
+  # thư, bảng xếp hạng. Ngày nghiệp vụ (hạn mức giúp / lời chúc) tính theo
+  # giờ Việt Nam (UTC+7), làm mới lúc 00:00.
+  # ==========================================================================
+
+  /ocb-farm/farms:
+    get:
+      tags: [OCB Farm]
+      summary: Danh sách nông trại đồng nghiệp để ghé thăm
+      description: >-
+        Tìm theo tên (tối thiểu 2 ký tự, khớp một phần, không phân biệt hoa
+        thường), lọc theo phòng ban, phân trang. Người đang đăng nhập không
+        xuất hiện trong danh sách. Đồng nghiệp chưa có nông trại vẫn xuất
+        hiện với `has_farm: false` (xếp sau). Không có kết quả → `items: []`.
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+            minLength: 2
+          description: Từ khoá tên (bỏ trống để liệt kê tất cả)
+        - in: query
+          name: department_id
+          schema:
+            type: integer
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Trang danh sách nông trại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmListPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Từ khoá ít hơn 2 ký tự hoặc tham số phân trang / phòng ban không hợp lệ (`INVALID_PAYLOAD`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+
+  /ocb-farm/farms/{userId}:
+    get:
+      tags: [OCB Farm]
+      summary: Xem nông trại đồng nghiệp (chỉ xem)
+      description: >-
+        Trả nông trại đã tick tới hiện tại nhưng KHÔNG ghi lại — ghé thăm
+        không thay đổi nông trại của chủ (BR-21) và không giới hạn số lượt.
+        Dữ liệu riêng tư đã được lọc: chỉ tên, phòng ban, thâm niên, huy hiệu
+        được chọn hiển thị; không có kho, số dư, tiến trình thành tựu. Khi
+        đồng nghiệp chưa có nông trại: `has_farm: false`, `state: null`, mọi
+        hành động giúp không khả dụng.
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Nông trại chỉ xem (hoặc trạng thái chưa có nông trại)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmVisitResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: >-
+            `TARGET_FARM_NOT_FOUND` (không có nhân viên này) hoặc
+            `INVALID_PAYLOAD` (mã không hợp lệ / tự xem nông trại của mình)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+
+  /ocb-farm/farms/{userId}/help:
+    post:
+      tags: [OCB Farm]
+      summary: Giúp đồng nghiệp tưới cây / cho vật nuôi ăn
+      description: >-
+        Đưa cây thiếu nước về đủ nước hoặc độ no vật nuôi lên tối đa (không
+        vượt trần), cộng `help_reward_each` Hạt OCB cho cả người giúp và chủ
+        nông trại đúng một lần, trong cùng một transaction. Hạn mức
+        `help_quota_per_day` lượt / người / ngày và mỗi nông trại chỉ được
+        cùng một người giúp một lần trong ngày (BR-22). Hai người giúp gần
+        như cùng lúc đều được ghi nhận và thưởng. Thất bại → không trừ lượt,
+        không cộng Hạt OCB, không đổi nông trại. Thành công tăng `version`
+        nông trại của chủ.
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmHelpRequest'
+      responses:
+        '200':
+          description: Giúp thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmHelpResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: >-
+            `HELP_QUOTA_EXCEEDED` (kèm `resets_at`), `HELP_ALREADY_HELPED_TODAY`,
+            `HELP_NOTHING_TO_DO`, `HELP_SELF_NOT_ALLOWED`, `TARGET_FARM_NOT_FOUND`,
+            `FARM_NOT_INITIALIZED` (người giúp chưa có nông trại),
+            `PLANT_NOT_FOUND` / `ANIMAL_NOT_FOUND`, `INVALID_PAYLOAD`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                quotaExceeded:
+                  summary: Hết lượt giúp trong ngày
+                  value:
+                    error: true
+                    code: HELP_QUOTA_EXCEEDED
+                    message: Bạn đã dùng hết 10 lượt giúp hôm nay. Lượt giúp được làm mới lúc 00:00 (giờ Việt Nam).
+                    details:
+                      quota: 10
+                      remaining_quota: 0
+                      resets_at: '2026-10-05T17:00:00.000Z'
+
+  /ocb-farm/farms/{userId}/greeting:
+    post:
+      tags: [OCB Farm]
+      summary: Gửi lời chúc / biểu cảm lên nông trại đồng nghiệp
+      description: >-
+        Độ dài tối đa `greeting_max_len` ký tự, không chứa từ bị cấm. Hạn mức
+        `greeting_quota_per_day` lời chúc / người gửi / nông trại / ngày;
+        trong ngày kỷ niệm vào làm của chủ chỉ được một lời chúc / người.
+        Lời chúc được lưu và hiển thị trong hộp thư của chủ kể cả khi chủ
+        không truy cập đúng ngày kỷ niệm.
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmGreetingRequest'
+      responses:
+        '200':
+          description: Đã gửi lời chúc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmGreetingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: >-
+            `GREETING_TOO_LONG` (kèm `max_len`), `GREETING_FORBIDDEN_WORD`,
+            `GREETING_QUOTA_EXCEEDED` (kèm `quota`, `retry_at`, `anniversary`),
+            `GREETING_SELF_NOT_ALLOWED`, `TARGET_FARM_NOT_FOUND`, `INVALID_PAYLOAD`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+
+  /ocb-farm/me/inbox:
+    get:
+      tags: [OCB Farm]
+      summary: Hộp thư — người đã giúp và lời chúc của tôi
+      description: >-
+        Tối đa 100 mục gần nhất cho mỗi danh sách, mới nhất trước. Mục chưa
+        xem có `is_new: true`. Lời chúc đã bị xoá không xuất hiện.
+      responses:
+        '200':
+          description: Nội dung hộp thư
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmInboxResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ocb-farm/me/inbox/read:
+    post:
+      tags: [OCB Farm]
+      summary: Đánh dấu đã xem toàn bộ hộp thư
+      description: >-
+        Xoá cờ "mới" của mọi lượt giúp và lời chúc; cờ đã xoá không xuất hiện
+        lại. Idempotent — gọi lại chỉ trả 0 mục được đánh dấu.
+      responses:
+        '200':
+          description: Đã đánh dấu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmInboxReadResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ocb-farm/me/inbox/greetings:
+    delete:
+      tags: [OCB Farm]
+      summary: Xoá toàn bộ lời chúc trong hộp thư
+      description: >-
+        Xoá mềm (`deleted_at`) toàn bộ lời chúc chưa xoá của chủ nông trại
+        hiện tại (US-48). Nội dung đã xoá không hiển thị lại; hạn mức gửi
+        trong ngày của người gửi không bị ảnh hưởng. Idempotent — gọi lại khi
+        hộp thư đã trống trả `cleared: 0`.
+      responses:
+        '200':
+          description: Đã xoá toàn bộ lời chúc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmInboxClearGreetingsResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ocb-farm/me/inbox/greetings/{id}:
+    delete:
+      tags: [OCB Farm]
+      summary: Xoá một lời chúc trong hộp thư
+      description: >-
+        Xoá mềm một lời chúc của chủ nông trại hiện tại (US-48). Chỉ xoá được
+        lời chúc của chính mình; id không tồn tại hoặc đã xoá trước đó đều
+        trả cùng mã lỗi `GREETING_NOT_FOUND` (422), không phân biệt để không
+        rò rỉ việc id thuộc về nông trại khác.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Id lời chúc (`farm_greetings.id`)
+      responses:
+        '200':
+          description: Đã xoá lời chúc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmInboxDeleteGreetingResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Mã lời chúc không hợp lệ hoặc `GREETING_NOT_FOUND`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+
+  /ocb-farm/leaderboard:
+    get:
+      tags: [OCB Farm]
+      summary: Bảng xếp hạng
+      description: >-
+        Top 20 giảm dần theo tiêu chí; bằng nhau thì thâm niên dài hơn đứng
+        trước, rồi theo thứ tự chữ cái tên. `me` luôn có vị trí và giá trị
+        của người gọi (kể cả ngoài top 20). Chỉ nhân viên đã có nông trại.
+        Mỗi dòng chỉ gồm tên, phòng ban và giá trị (BR-23). Tổng tài sản được
+        làm mới theo chu kỳ `leaderboard_refresh` phút — `refreshed_at` là
+        lần làm mới gần nhất. `streak` là chuỗi hiện tại (chuỗi đã đứt tính 0).
+      parameters:
+        - in: query
+          name: metric
+          schema:
+            type: string
+            enum: [seniority, assets, streak]
+            default: seniority
+        - in: query
+          name: department_id
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bảng xếp hạng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmLeaderboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Tiêu chí hoặc phòng ban không hợp lệ (`INVALID_PAYLOAD`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+
+  # ==========================================================================
+  # Nhóm /admin/* — chuỗi middleware hiệu lực là:
+  #   authMiddleware → farmAccessMiddleware → adminMiddleware → handler
+  # Mọi path dưới đây YÊU CẦU vai trò admin (BR-26), NGOÀI quyền truy cập
+  # app ocb-farm (restricted, BR-25) đã áp dụng cho toàn bộ tag này. Admin
+  # luôn có quyền truy cập farmAccessMiddleware nên không bị chặn ở lớp đó.
+  # Thiếu vai trò admin → 403.
+  # ==========================================================================
+
+  /ocb-farm/admin/users:
+    get:
+      tags: [OCB Farm]
+      summary: '[Admin] Tìm nhân viên theo tên hoặc phòng ban (phân trang)'
+      description: >-
+        Yêu cầu vai trò admin, ngoài xác thực và quyền truy cập app
+        `ocb-farm` áp dụng cho toàn bộ nhóm endpoint. Tìm theo tên hoặc
+        tên đăng nhập (khớp một phần, không phân biệt hoa/thường) và/hoặc
+        phòng ban. Nhân viên chưa gọi `POST /me/init` vẫn xuất hiện trong
+        danh sách với `has_farm: false` và `seniority: null`. Không có kết
+        quả khớp vẫn trả về trang hợp lệ với `items: []`, `total: 0`.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Tìm theo tên hoặc tên đăng nhập, khớp một phần, không phân biệt hoa/thường
+          example: Nguyễn
+        - name: department_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Vượt 100 bị chặn về tối đa 100 (không coi là lỗi)
+      responses:
+        '200':
+          description: Một trang danh sách nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminUserListPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: '`department_id`, `page` hoặc `page_size` không phải số nguyên hợp lệ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                invalidDepartmentId:
+                  summary: department_id không phải số nguyên
+                  value:
+                    error: true
+                    code: INVALID_PAYLOAD
+                    message: Giá trị "department_id" phải là số nguyên.
+                    details:
+                      field: department_id
+                      value: abc
+
+  /ocb-farm/admin/users/{id}/join-date:
+    patch:
+      tags: [OCB Farm]
+      summary: '[Admin] Sửa ngày vào làm của một nhân viên'
+      description: >-
+        Yêu cầu vai trò admin. Áp dụng cùng quy tắc hợp lệ ngày vào làm như
+        phía nhân viên (BR-7: từ 01/01 năm thành lập OCB đến hôm nay theo
+        giờ Việt Nam). Thâm niên và mốc Cây OCB (`tree.milestone`,
+        `tree.branches`) được tính lại NGAY trong cùng transaction — không
+        phải chờ lượt tick kế tiếp. Đặt `join_date_admin_locked = true`
+        (nhân viên không tự sửa lại được nữa sau khi admin đã sửa, BR-8).
+        Ghi một dòng `farm_admin_audit` (`action: update_join_date`) với
+        người sửa, thời điểm UTC+7, giá trị trước/sau, và tạo thông báo cho
+        nhân viên (mã `JOIN_DATE_ADJUSTED_BY_ADMIN`, đọc lại ở `GET /me`).
+        Thành tựu, huy hiệu và vật phẩm được giữ nguyên kể cả khi thâm niên
+        giảm.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: user_id của nhân viên cần sửa
+          schema:
+            type: integer
+          example: 42
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmAdminJoinDatePatchRequest'
+      responses:
+        '200':
+          description: Đã sửa ngày vào làm — thâm niên và mốc Cây OCB tính lại ngay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminJoinDatePatchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Mã nhân viên không hợp lệ, nhân viên đích chưa có nông trại, hoặc ngày vào làm ngoài khoảng hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                invalidTargetId:
+                  summary: Mã nhân viên không hợp lệ
+                  value:
+                    error: true
+                    code: INVALID_PAYLOAD
+                    message: Mã nhân viên không hợp lệ.
+                targetNotFound:
+                  summary: Nhân viên đích chưa có nông trại
+                  value:
+                    error: true
+                    code: TARGET_FARM_NOT_FOUND
+                    message: Nhân viên này chưa có nông trại nên không có ngày vào làm để sửa.
+                joinDateOutOfRange:
+                  summary: Ngày vào làm ngoài khoảng hợp lệ
+                  value:
+                    error: true
+                    code: JOIN_DATE_OUT_OF_RANGE
+                    message: Ngày vào làm phải trong khoảng từ 1996-01-01 đến 2026-01-01.
+                    details:
+                      min_date: '1996-01-01'
+                      max_date: '2026-01-01'
+
+  /ocb-farm/admin/users/{id}/seeds:
+    post:
+      tags: [OCB Farm]
+      summary: '[Admin] Điều chỉnh số dư Hạt OCB của một nhân viên'
+      description: >-
+        Yêu cầu vai trò admin. Bắt buộc `reason` ≥ `admin_reason_min_len`
+        ký tự. `amount` là số nguyên khác 0 (dương là cộng, âm là trừ),
+        `|amount| ≤ admin_adjust_max`; bị từ chối nếu số dư sau điều chỉnh
+        nhỏ hơn 0. Ghi một dòng sổ thu chi (`kind: admin_adjust`) và một
+        dòng `farm_admin_audit` (`action: adjust_seeds`), tạo thông báo cho
+        nhân viên (mã `SEEDS_ADJUSTED_BY_ADMIN`).
+
+
+        **Header `Idempotency-Key`** (tùy chọn nhưng khuyến nghị): bảo đảm
+        xác nhận nhiều lần cùng một yêu cầu (ví dụ do click lại hoặc mạng
+        chập chờn) chỉ ghi đúng một bản ghi sổ. Khi gửi lại cùng
+        `Idempotency-Key` đã xử lý thành công trước đó, response trả về
+        `replayed: true` kèm đúng kết quả (`balance_before`,
+        `balance_after`, `audit_id`) đã ghi ở lần đầu — KHÔNG áp dụng lại
+        hiệu lực (không cộng/trừ thêm một lần nữa). Không gửi header này
+        thì không có bảo đảm chống lặp.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: user_id của nhân viên cần điều chỉnh
+          schema:
+            type: integer
+          example: 42
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >-
+            Khóa chống lặp do client sinh (ví dụ UUID). Gửi lại cùng khóa
+            cho một yêu cầu đã xử lý thành công trước đó sẽ trả về đúng kết
+            quả cũ (`replayed: true`) mà không điều chỉnh số dư thêm lần
+            nào nữa.
+          schema:
+            type: string
+          example: 8f14e45f-ceea-4c5d-8f1b-admin00000001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmAdminSeedsAdjustRequest'
+      responses:
+        '200':
+          description: Đã điều chỉnh số dư (hoặc trả lại kết quả replay nếu Idempotency-Key đã xử lý trước đó)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminSeedsAdjustResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Mã nhân viên không hợp lệ, nhân viên đích chưa có nông trại, hoặc payload điều chỉnh không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                reasonTooShort:
+                  summary: Lý do quá ngắn
+                  value:
+                    error: true
+                    code: ADMIN_REASON_TOO_SHORT
+                    message: Lý do điều chỉnh phải có ít nhất 10 ký tự.
+                    details:
+                      min_length: 10
+                invalidAmount:
+                  summary: Mức điều chỉnh không hợp lệ
+                  value:
+                    error: true
+                    code: ADMIN_ADJUST_INVALID_AMOUNT
+                    message: Mức điều chỉnh phải là số nguyên khác 0.
+                    details:
+                      amount: 0
+                limitExceeded:
+                  summary: Mức điều chỉnh vượt hạn mức
+                  value:
+                    error: true
+                    code: ADMIN_ADJUST_LIMIT_EXCEEDED
+                    message: Mức điều chỉnh không được vượt quá 10000 Hạt OCB.
+                    details:
+                      max: 10000
+                      amount: 50000
+                negativeBalance:
+                  summary: Điều chỉnh làm số dư âm
+                  value:
+                    error: true
+                    code: ADMIN_ADJUST_NEGATIVE_BALANCE
+                    message: Không thể điều chỉnh vì số dư sau khi trừ sẽ nhỏ hơn 0.
+                    details:
+                      balance_before: 80
+                      amount: -200
+                targetNotFound:
+                  summary: Nhân viên đích chưa có nông trại
+                  value:
+                    error: true
+                    code: TARGET_FARM_NOT_FOUND
+                    message: Nhân viên này chưa có nông trại nên không có ngày vào làm để sửa.
+
+  /ocb-farm/admin/users/{id}/reset:
+    post:
+      tags: [OCB Farm]
+      summary: '[Admin] Đặt lại nông trại của một nhân viên về trạng thái khởi tạo'
+      description: >-
+        Yêu cầu vai trò admin. Đưa nông trại về trạng thái khởi tạo (vật
+        nuôi, cây trồng, trang trí, kho, Hạt OCB, chuỗi check-in, vùng đất
+        mở rộng đều mất) nhưng GIỮ NGUYÊN ngày vào làm, thâm niên, mốc Cây
+        OCB, thành tựu và huy hiệu đang chọn.
+
+
+        **`?preview=true`**: chỉ tính và trả danh sách phần giữ lại
+        (`kept`) / phần bị mất (`lost`) để UI dựng hộp xác nhận hai bước —
+        KHÔNG ghi gì vào DB. Response ở chế độ này có hình dạng
+        `FarmAdminResetPreview` (chỉ `user_id`, `kept`, `lost`).
+
+
+        **Không kèm `preview`** (hoặc `preview` khác `"true"`): thực hiện
+        đặt lại thật. Response có hình dạng `FarmAdminResetResponse` — cùng
+        `kept`/`lost` như xem trước, kèm thêm `seeds` (số Hạt OCB sau khi
+        đặt lại), `state` (trạng thái JSONB khởi điểm mới), `version` và
+        `audit_id`. Ghi lưu vết (`farm_admin_audit`, `action: reset_farm`)
+        kèm snapshot toàn bộ trạng thái trước khi đặt lại trong
+        `before_value`, và tạo thông báo cho nhân viên (mã
+        `FARM_RESET_BY_ADMIN`).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: user_id của nhân viên cần đặt lại nông trại
+          schema:
+            type: integer
+          example: 42
+        - name: preview
+          in: query
+          required: false
+          description: Truyền `true` để chỉ xem trước phần giữ lại/mất, không ghi gì vào DB
+          schema:
+            type: string
+            enum: ['true', 'false']
+          example: 'true'
+      requestBody:
+        required: false
+        description: Bỏ qua khi gọi kèm `?preview=true`
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmAdminResetRequest'
+      responses:
+        '200':
+          description: Kết quả xem trước (preview=true) hoặc kết quả đặt lại thật
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/FarmAdminResetPreview'
+                  - $ref: '#/components/schemas/FarmAdminResetResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Mã nhân viên không hợp lệ hoặc nhân viên đích chưa có nông trại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                targetNotFound:
+                  summary: Nhân viên đích chưa có nông trại
+                  value:
+                    error: true
+                    code: TARGET_FARM_NOT_FOUND
+                    message: Nhân viên này chưa có nông trại nên không có ngày vào làm để sửa.
+
+  /ocb-farm/admin/config:
+    get:
+      tags: [OCB Farm]
+      summary: '[Admin] Đọc cấu hình cân bằng game đang áp dụng'
+      description: >-
+        Yêu cầu vai trò admin. Trả cùng dữ liệu với `GET /ocb-farm/config`
+        (admin xem cùng cấu hình nhân viên đang dùng để đối chiếu trước khi
+        sửa).
+      responses:
+        '200':
+          description: Cấu hình đang áp dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags: [OCB Farm]
+      summary: '[Admin] Ghi một hoặc nhiều thông số cân bằng game'
+      description: >-
+        Yêu cầu vai trò admin. Validate từng `key` theo đúng khóa đã tồn
+        tại trong `farm_config` và giá trị mới nằm trong khoảng
+        `[min_value, max_value]` của khóa đó. Giá trị mới chỉ áp dụng cho
+        lượt chơi SAU thời điểm lưu — không tính lại phần thưởng hoặc tiến
+        trình đã phát sinh trước đó. Ghi một dòng `farm_admin_audit`
+        (`action: update_config`) cho MỖI khóa thay đổi. Trả lại cấu hình
+        đầy đủ sau khi ghi, cùng hình dạng với `GET /admin/config`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FarmAdminConfigPutRequest'
+      responses:
+        '200':
+          description: Đã ghi cấu hình — trả lại cấu hình đầy đủ sau khi cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Khóa cấu hình không tồn tại hoặc giá trị ngoài khoảng min/max cho phép
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                unknownKey:
+                  summary: Khóa cấu hình không tồn tại
+                  value:
+                    error: true
+                    code: CONFIG_KEY_UNKNOWN
+                    message: Không tìm thấy khoá cấu hình "khong_ton_tai".
+                    details:
+                      key: khong_ton_tai
+                outOfRange:
+                  summary: Giá trị ngoài khoảng min/max
+                  value:
+                    error: true
+                    code: CONFIG_VALUE_OUT_OF_RANGE
+                    message: Giá trị của "initial_seeds" phải nằm trong khoảng [0, 100000].
+                    details:
+                      key: initial_seeds
+                      value: -5
+                      min_value: 0
+                      max_value: 100000
+
+  /ocb-farm/admin/stats:
+    get:
+      tags: [OCB Farm]
+      summary: '[Admin] Thống kê sử dụng OCB Farm'
+      description: >-
+        Yêu cầu vai trò admin. Tổng số nông trại, số nhân viên hoạt động
+        trong 7/30 ngày gần nhất, lượt check-in theo ngày (30 ngày gần
+        nhất), loài vật nuôi và loại cây phổ biến nhất, phân bố thâm niên
+        — lọc được theo phòng ban. Mọi mốc thời gian tính theo giờ Việt
+        Nam (UTC+7, xem `timezone_note`); `computed_at` là thời điểm số
+        liệu được tính — số liệu tính trực tiếp mỗi lần gọi, không cache.
+        Không có dữ liệu khớp bộ lọc thì mọi mảng trả về rỗng và mọi số
+        đếm trả về 0 (không bao giờ `null`).
+      parameters:
+        - name: department_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Số liệu thống kê sử dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: '`department_id` không phải số nguyên hợp lệ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                invalidDepartmentId:
+                  summary: department_id không phải số nguyên
+                  value:
+                    error: true
+                    code: INVALID_PAYLOAD
+                    message: Giá trị "department_id" phải là số nguyên.
+                    details:
+                      field: department_id
+                      value: abc
+
+  /ocb-farm/admin/audit:
+    get:
+      tags: [OCB Farm]
+      summary: '[Admin] Xem lưu vết thao tác quản trị (chỉ đọc, phân trang)'
+      description: >-
+        Yêu cầu vai trò admin. Trả danh sách dòng `farm_admin_audit`, sắp
+        xếp `occurred_at` giảm dần (mới nhất trước), kèm tên hiển thị của
+        admin thực hiện và nhân viên bị tác động (nullable — `action:
+        update_config` không nhắm vào một nhân viên cụ thể). Lọc tùy chọn
+        theo `target_user_id` hoặc `action`. Chỉ đọc — không có hành động
+        ghi nào ở endpoint này.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Vượt 100 bị chặn về tối đa 100 (không coi là lỗi)
+        - name: target_user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Lọc theo nhân viên bị tác động
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [update_join_date, adjust_seeds, reset_farm, update_config]
+          description: Lọc theo loại hành động quản trị
+      responses:
+        '200':
+          description: Một trang lưu vết thao tác quản trị
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmAdminAuditLogPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: '`target_user_id`, `page` hoặc `page_size` không phải số nguyên hợp lệ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FarmBusinessError'
+              examples:
+                invalidTargetUserId:
+                  summary: target_user_id không phải số nguyên
+                  value:
+                    error: true
+                    code: INVALID_PAYLOAD
+                    message: Giá trị "target_user_id" phải là số nguyên.
+                    details:
+                      field: target_user_id
+                      value: abc

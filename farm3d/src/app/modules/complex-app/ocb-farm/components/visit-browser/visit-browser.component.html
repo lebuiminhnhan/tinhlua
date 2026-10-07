@@ -1,0 +1,154 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="visit-browser"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-people me-2 text-success" aria-hidden="true"></i>Ghé thăm nông trại đồng nghiệp
+        </h5>
+        <button type="button" class="btn-close" aria-label="Đóng danh sách ghé thăm" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-2 mb-3">
+          <div class="col-sm-7">
+            <label for="visit-search-input" class="form-label small text-muted mb-1">Tìm theo tên</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+              <input
+                id="visit-search-input"
+                type="search"
+                class="form-control"
+                placeholder="Nhập tối thiểu {{ minChars }} ký tự…"
+                [ngModel]="query()"
+                (ngModelChange)="onQueryInput($event)"
+                data-testid="visit-search-input"
+              />
+              @if (query()) {
+                <button type="button" class="btn btn-outline-secondary" aria-label="Xoá từ khoá" (click)="clearQuery()">
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              }
+            </div>
+            @if (queryTooShort() && query().length > 0) {
+              <div class="form-text text-warning" data-testid="visit-search-hint">
+                Nhập thêm để đủ tối thiểu {{ minChars }} ký tự.
+              </div>
+            }
+          </div>
+          <div class="col-sm-5">
+            <label for="visit-department-select" class="form-label small text-muted mb-1">Phòng ban</label>
+            <select
+              id="visit-department-select"
+              class="form-select"
+              data-testid="visit-department-select"
+              (change)="onDepartmentChange($event)"
+            >
+              <option value="">Tất cả phòng ban</option>
+              @for (d of departments(); track d.id) {
+                <option [value]="d.id" [selected]="departmentId() === d.id">{{ d.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        @switch (status()) {
+          @case ('loading') {
+            <div class="text-center text-muted py-5" role="status" aria-live="polite" data-testid="visit-loading">
+              <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Đang tải danh sách nông trại…
+            </div>
+          }
+          @case ('error') {
+            <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2" role="alert" data-testid="visit-error">
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+              <div class="flex-grow-1">
+                Không tải được danh sách nông trại.
+                @if (errorMessage()) {
+                  <span class="small d-block">{{ errorMessage() }}</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-testid="visit-retry" (click)="retry()">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+              </button>
+            </div>
+          }
+          @default {
+            @if (isEmpty()) {
+              <div class="text-center py-4" data-testid="visit-empty">
+                <i class="bi bi-emoji-neutral fs-1 text-muted" aria-hidden="true"></i>
+                <p class="fw-semibold mt-2 mb-1">Không tìm thấy đồng nghiệp phù hợp</p>
+                <p class="text-muted small mb-0">Hãy thử đổi từ khoá tìm kiếm hoặc chọn phòng ban khác.</p>
+              </div>
+            } @else {
+              <div class="list-group" data-testid="visit-list">
+                @for (row of rows(); track row.user_id) {
+                  <button
+                    type="button"
+                    class="list-group-item list-group-item-action d-flex align-items-center gap-3"
+                    data-testid="visit-row"
+                    (click)="pick(row)"
+                  >
+                    <i class="bi bi-person-circle fs-3 text-success" aria-hidden="true"></i>
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold">{{ row.full_name }}</span>
+                        @if (row.is_anniversary_today) {
+                          <span class="badge text-bg-danger" data-testid="visit-anniversary-badge">
+                            <i class="bi bi-stars me-1" aria-hidden="true"></i>Kỷ niệm hôm nay
+                          </span>
+                        }
+                        @if (!row.has_farm) {
+                          <span class="badge text-bg-secondary" data-testid="visit-no-farm-badge">Chưa có nông trại</span>
+                        }
+                      </div>
+                      <div class="small text-muted">
+                        {{ row.department_name || 'Chưa rõ phòng ban' }} · Thâm niên {{ row.seniorityText }}
+                        @if (row.farm_name) {
+                          · {{ row.farm_name }}
+                        }
+                      </div>
+                    </div>
+                    <i class="bi bi-chevron-right text-muted" aria-hidden="true"></i>
+                  </button>
+                }
+              </div>
+            }
+          }
+        }
+      </div>
+
+      @if (!isEmpty() && status() === 'success' && (hasPrev() || hasNext())) {
+        <div class="modal-footer justify-content-between flex-wrap gap-2">
+          <span class="small text-muted" data-testid="visit-range">
+            @if (rangeLabel()) {
+              Đồng nghiệp {{ rangeLabel() }}
+            }
+          </span>
+          <nav aria-label="Phân trang danh sách ghé thăm">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item" [class.disabled]="!hasPrev()">
+                <button type="button" class="page-link" aria-label="Trang trước" [disabled]="!hasPrev()" (click)="prev()">
+                  <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
+              </li>
+              <li class="page-item disabled"><span class="page-link">{{ page() }}</span></li>
+              <li class="page-item" [class.disabled]="!hasNext()">
+                <button type="button" class="page-link" aria-label="Trang sau" [disabled]="!hasNext()" (click)="next()">
+                  <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      }
+    </div>
+  </div>
+</div>

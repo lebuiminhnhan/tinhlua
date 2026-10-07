@@ -1,0 +1,110 @@
+<div class="farm-hud d-flex flex-wrap align-items-start justify-content-between gap-2 p-2" role="region" aria-label="Thông tin nông trại">
+  <!-- Trái: Hạt OCB + tên nông trại + huy hiệu -->
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <button
+      type="button"
+      class="hud-chip btn btn-light shadow-sm d-inline-flex align-items-center gap-2 fw-semibold"
+      title="Xem lịch sử thu chi"
+      (click)="onBalanceClick()"
+    >
+      <i class="bi bi-coin text-warning fs-5" aria-hidden="true"></i>
+      <span class="visually-hidden">Số Hạt OCB hiện có:</span>
+      <span class="fs-5" aria-live="polite" aria-atomic="true">{{ balanceText() }}</span>
+      <span class="small text-body-secondary">Hạt OCB</span>
+      @if (syncing()) {
+        <span class="spinner-border spinner-border-sm text-secondary" role="status">
+          <span class="visually-hidden">Đang đồng bộ giao dịch</span>
+        </span>
+      }
+    </button>
+
+    @if (farmName()) {
+      <span class="hud-chip badge text-bg-light shadow-sm fw-semibold px-3 py-2">
+        <i class="bi bi-house-heart me-1 text-primary" aria-hidden="true"></i>{{ farmName() }}
+      </span>
+    }
+
+    @if (badges().length > 0) {
+      <button
+        type="button"
+        class="hud-chip btn btn-light btn-sm shadow-sm d-inline-flex align-items-center gap-1"
+        title="Xem thành tựu và huy hiệu"
+        aria-label="Huy hiệu đang hiển thị, mở bảng thành tựu"
+        (click)="onBadgesClick()"
+      >
+        @for (badge of badges(); track badge.code) {
+          <span class="badge text-bg-warning d-inline-flex align-items-center gap-1">
+            <i class="bi bi-award-fill" aria-hidden="true"></i>{{ badge.name }}
+          </span>
+        }
+      </button>
+    }
+
+    <!-- Hộp thư: người đã giúp + lời chúc, dấu "mới" cho tới khi mở (US-8, US-27, US-48). -->
+    <button
+      type="button"
+      class="hud-chip btn btn-light shadow-sm d-inline-flex align-items-center gap-1 position-relative"
+      title="Xem hộp thư nông trại"
+      [attr.aria-label]="inboxNewCount() > 0 ? 'Hộp thư, ' + inboxNewCount() + ' mục mới' : 'Hộp thư'"
+      data-testid="hud-inbox-button"
+      (click)="onInboxClick()"
+    >
+      <i class="bi bi-envelope-heart fs-5 text-success" aria-hidden="true"></i>
+      @if (inboxNewCount() > 0) {
+        <span
+          class="badge text-bg-danger rounded-pill position-absolute top-0 start-100 translate-middle"
+          data-testid="hud-inbox-badge"
+        >
+          {{ inboxNewCount() }}
+        </span>
+      }
+    </button>
+  </div>
+
+  <!-- Phải: môi trường + giới hạn -->
+  <div class="d-flex flex-column align-items-end gap-2">
+    <div class="d-flex flex-wrap justify-content-end gap-2" aria-label="Môi trường nông trại">
+      @if (dayPhase(); as phase) {
+        <span class="hud-chip badge text-bg-light shadow-sm px-3 py-2" [title]="dayPhaseTitle()">
+          <i [class]="phase.icon + ' me-1'" aria-hidden="true"></i>{{ phase.label }}
+          @if (sceneLocked()) {
+            <i class="bi bi-lock-fill ms-1 text-secondary" aria-hidden="true"></i>
+            <span class="visually-hidden">(đang khoá cảnh)</span>
+          }
+        </span>
+      }
+      @if (weather(); as w) {
+        <span class="hud-chip badge text-bg-light shadow-sm px-3 py-2" aria-live="polite">
+          <i [class]="w.icon + ' me-1'" aria-hidden="true"></i>
+          <span class="visually-hidden">Thời tiết: </span>{{ w.label }}
+        </span>
+      }
+      @if (seasonName(); as season) {
+        <span class="hud-chip badge text-bg-danger shadow-sm px-3 py-2">
+          <i class="bi bi-stars me-1" aria-hidden="true"></i>
+          <span class="visually-hidden">Dịp lễ đang diễn ra: </span>{{ season }}
+        </span>
+      }
+    </div>
+
+    @if (limitRows().length > 0) {
+      <ul class="hud-chip list-unstyled d-flex flex-wrap justify-content-end gap-1 m-0 bg-body rounded shadow-sm px-2 py-1 small" aria-label="Số lượng hiện tại so với giới hạn">
+        @for (row of limitRows(); track row.key) {
+          <li
+            class="d-inline-flex align-items-center gap-1 px-1"
+            [class.text-danger]="row.full"
+            [class.text-warning-emphasis]="row.near"
+            [title]="row.ariaLabel"
+            [attr.aria-label]="row.ariaLabel"
+          >
+            <i [class]="row.icon" aria-hidden="true"></i>
+            <span aria-hidden="true">{{ row.current }}/{{ row.max }}</span>
+            @if (row.full) {
+              <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

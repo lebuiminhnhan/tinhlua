@@ -1,0 +1,161 @@
+@let d = detail();
+<div
+  #panel
+  class="card shadow entity-action-menu mb-0"
+  role="dialog"
+  aria-modal="false"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="farm-entity-menu"
+  [style.left.px]="position().left"
+  [style.top.px]="position().top"
+>
+  <div class="card-header d-flex align-items-center gap-2 py-2">
+    <i class="{{ d.icon }} text-success fs-5" aria-hidden="true"></i>
+    <h6 class="mb-0 me-auto" [id]="titleId">
+      {{ d.title }} <small class="text-muted fw-normal">· ô {{ d.cell }}</small>
+    </h6>
+    <button type="button" class="btn-close" aria-label="Đóng menu thao tác" (click)="closed.emit()"></button>
+  </div>
+
+  <div class="card-body py-2 small">
+    @if (animal(); as a) {
+      <div class="d-flex justify-content-between mb-1">
+        <span>Độ no</span>
+        <span class="fw-semibold" data-testid="entity-fullness">{{ fullnessPercent() }}/100</span>
+      </div>
+      <div
+        class="progress mb-2"
+        role="progressbar"
+        aria-label="Độ no"
+        [attr.aria-valuenow]="fullnessPercent()"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        style="height: 0.5rem"
+      >
+        <div class="progress-bar {{ fullnessBarClass() }}" [style.width.%]="fullnessPercent()"></div>
+      </div>
+      @if (a.status.sad) {
+        <div class="alert alert-secondary py-1 px-2 mb-2" role="status" data-testid="entity-sad">
+          <i class="bi bi-emoji-frown me-1" aria-hidden="true"></i>Đang buồn vì đói — dừng tạo sản phẩm mới.
+          Cho ăn để vui trở lại.
+        </div>
+      }
+      @if (a.productLabel) {
+        <div class="d-flex justify-content-between mb-1">
+          <span>{{ a.productLabel }} chờ thu hoạch</span>
+          <span class="fw-semibold" data-testid="entity-pending">
+            {{ a.status.pending }}
+            @if (a.status.capped) {
+              <span class="badge text-bg-warning ms-1">Đạt trần</span>
+            }
+          </span>
+        </div>
+        @if (a.status.pending > 0) {
+          <span class="badge text-bg-warning mb-1"><i class="bi bi-star-fill me-1" aria-hidden="true"></i>Sẵn sàng thu hoạch</span>
+        } @else if (nextProductLabel(); as next) {
+          <div class="text-muted" aria-live="off">
+            <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>Sản phẩm kế tiếp sau {{ next }}
+          </div>
+        }
+      }
+      <div class="text-muted mt-1">Cho ăn: {{ feedCostLabel() }} Hạt OCB · Bán lại: {{ animalRefund() }} Hạt OCB</div>
+    }
+
+    @if (plant(); as p) {
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span>Giai đoạn</span>
+        <span class="fw-semibold" data-testid="entity-stage">{{ p.status.stageLabel }}</span>
+      </div>
+      @if (p.status.ready) {
+        <span class="badge text-bg-warning mb-2" data-testid="entity-ready">
+          <i class="bi bi-star-fill me-1" aria-hidden="true"></i>Sẵn sàng thu hoạch
+        </span>
+      } @else {
+        <div
+          class="progress mb-1"
+          role="progressbar"
+          aria-label="Tiến độ giai đoạn hiện tại"
+          [attr.aria-valuenow]="p.status.stagePercent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          style="height: 0.5rem"
+        >
+          <div class="progress-bar" [class.bg-info]="p.status.thirsty" [class.bg-success]="!p.status.thirsty" [style.width.%]="p.status.stagePercent"></div>
+        </div>
+        @if (plantCountdown(); as left) {
+          <div class="mb-1" aria-live="off" data-testid="entity-countdown">
+            <i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>Còn {{ left }} tới giai đoạn kế tiếp
+            @if (p.status.thirsty) {
+              <span class="badge text-bg-secondary ms-1"><i class="bi bi-pause-fill" aria-hidden="true"></i> Tạm dừng</span>
+            }
+          </div>
+        }
+      }
+      @if (p.status.thirsty) {
+        <div class="alert alert-info py-1 px-2 mb-1" role="status" data-testid="entity-thirsty">
+          <i class="bi bi-droplet-half me-1" aria-hidden="true"></i>Cây đang thiếu nước — sinh trưởng tạm dừng, tưới để tiếp tục.
+        </div>
+      }
+      @if (p.status.fertilizedThisStage) {
+        <div class="text-muted"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Đã bón phân giai đoạn này</div>
+      }
+      <div class="text-muted">Sản phẩm: {{ p.productLabel }}{{ p.fruit ? ' · thu hoạch nhiều lần' : ' · hết vòng đời sau khi thu hoạch' }}</div>
+    }
+
+    @if (decor(); as dc) {
+      <div class="d-flex justify-content-between mb-1">
+        <span>Hướng</span><span class="fw-semibold">{{ dc.rotation }}°</span>
+      </div>
+      <div class="text-muted">Di chuyển và xoay miễn phí · Bán lại: {{ decorRefund() }} Hạt OCB</div>
+    }
+
+    @if (d.note) {
+      <div class="text-muted mt-1"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>{{ d.note }}</div>
+    }
+  </div>
+
+  <div class="card-footer py-2">
+    <div class="d-flex flex-wrap gap-2" role="group" aria-label="Thao tác">
+      @for (b of buttons(); track b.id) {
+        <button
+          type="button"
+          class="btn btn-sm entity-action-btn"
+          [class.btn-success]="b.id === 'feed' || b.id === 'harvest' || b.id === 'water'"
+          [class.btn-outline-success]="b.id === 'fertilize'"
+          [class.btn-outline-secondary]="b.id === 'move' || b.id === 'rotate'"
+          [class.btn-outline-danger]="b.id === 'sell'"
+          [disabled]="b.disabled"
+          [attr.aria-busy]="b.busy"
+          [attr.aria-describedby]="b.disabledReason ? 'entity-reason-' + b.id : null"
+          [attr.data-testid]="'entity-action-' + b.id"
+          (click)="onAction(b)"
+        >
+          @if (b.busy) {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+          } @else {
+            <i class="{{ b.icon }} me-1" aria-hidden="true"></i>
+          }
+          {{ b.label }}
+          @if (b.costLabel) {
+            <span class="badge text-bg-light ms-1">{{ b.costLabel }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    @if (reasons().length > 0) {
+      <ul class="list-unstyled small text-muted mt-2 mb-0">
+        @for (r of reasons(); track r.id) {
+          <li [id]="'entity-reason-' + r.id"><strong>{{ r.label }}:</strong> {{ r.reason }}</li>
+        }
+      </ul>
+    }
+
+    @if (error(); as err) {
+      <div class="alert alert-danger py-1 px-2 mt-2 mb-0 small" role="alert" data-testid="entity-error">
+        <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ err }}
+      </div>
+    }
+  </div>
+</div>

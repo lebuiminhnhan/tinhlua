@@ -1,0 +1,66 @@
+:host {
+  display: contents;
+}
+
+.visit-toolbar {
+  z-index: 5;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+
+  // Giúp tưới / cho ăn / gửi lời chúc là hành động cốt lõi của chế độ ghé thăm trên
+  // điện thoại — đảm bảo vùng chạm tối thiểu 44 px dù dùng `.btn-sm` (US-38).
+  @media (max-width: 767.98px) {
+    .btn {
+      min-height: 44px;
+    }
+  }
+}
+
+.visit-anniversary {
+  border-color: var(--bs-warning);
+}
+
+// Hiệu ứng lễ hội khi chủ nông trại đang trong ngày kỷ niệm (US-8) — nhẹ, không chặn
+// tương tác, tắt khi trình duyệt yêu cầu giảm hiệu ứng chuyển động.
+.visit-anniversary-banner {
+  animation: visit-anniversary-glow 2.4s ease-in-out infinite;
+}
+
+.visit-confetti {
+  display: inline-block;
+  animation: visit-confetti-bounce 1.2s ease-in-out infinite;
+}
+
+.visit-greeting-card {
+  max-width: 24rem;
+}
+
+@keyframes visit-anniversary-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(255, 193, 7, 0);
+  }
+  50% {
+    box-shadow: 0 0 0.75rem rgba(255, 193, 7, 0.6);
+  }
+}
+
+@keyframes visit-confetti-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visit-anniversary-banner,
+  .visit-confetti {
+    animation: none;
+  }
+}

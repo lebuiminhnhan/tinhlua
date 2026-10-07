@@ -1,0 +1,19 @@
+// Thẻ khởi tạo nằm trong khung 3D (chiều cao cố định) → tự cuộn khi màn hình thấp.
+:host {
+  display: contents;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 30rem;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
+.guide-progress {
+  height: 4px;
+}
+
+.guide-icon {
+  font-size: 2.5rem;
+}

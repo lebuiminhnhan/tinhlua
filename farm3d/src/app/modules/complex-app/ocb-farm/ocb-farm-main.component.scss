@@ -1,0 +1,102 @@
+// Khung 3D: chiều cao cố định theo viewport để canvas (11.5) có kích thước ổn định;
+// HUD và overlay tải phủ tuyệt đối lên trên (`.farm-stage` là `position-relative`).
+.farm-stage {
+  min-height: 22rem;
+  height: calc(100vh - 16rem);
+  max-height: 48rem;
+  overflow: hidden;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+
+  // Fullscreen_Mode (task 15, AC 1.1, 1.2): `.farm-stage` là phần tử fullscreen thật.
+  // `:fullscreen` áp dụng tự nhiên khi trình duyệt phóng to phần tử; `.farm-stage-fullscreen`
+  // (toggle bởi `farm-canvas.component` theo `FullscreenService.active()`, nguồn chân lý
+  // duy nhất là `fullscreenchange`) đảm bảo cùng hiệu ứng khi test DOM (jsdom không hỗ trợ
+  // `:fullscreen`) và đồng bộ ngay cả khi trình duyệt thoát fullscreen do nguồn ngoài (AC 1.6).
+  &:fullscreen,
+  &.farm-stage-fullscreen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    background: #000;
+    border-radius: 0;
+  }
+}
+
+// Cinema_Mode — cửa sổ nổi (Picture-in-Picture) có thể kéo thả tự do, luôn ở trên cùng
+// mọi nội dung khác của trang (toolbar, HUD, panel vẫn hiển thị/tương tác bình thường
+// phía dưới). `position: fixed` + toạ độ `left`/`top` được component set qua `pipX()`/
+// `pipY()` (binding `[style.left.px]`/`[style.top.px]` trong template) — không dùng
+// `transform` vì cần toạ độ tuyệt đối ổn định khi kéo.
+.farm-stage-pip {
+  position: fixed !important;
+  width: 360px;
+  height: 240px;
+  min-width: 240px;
+  min-height: 160px;
+  max-height: none;
+  z-index: 1050; // trên AdminLTE navbar/sidebar (thường ~1038) và modal backdrop thường dùng
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--bs-border-color);
+  background: #000;
+
+  // Khung 3D PiP chiếm toàn bộ phần dưới thanh handle.
+  .farm-canvas-host {
+    top: 2rem; // chừa chỗ cho .farm-cinema-pip-handle phía trên
+  }
+}
+
+// Thanh kéo thả (handle) của cửa sổ Cinema_Mode (PiP) — kéo bằng thanh này chỉ di chuyển
+// cửa sổ, không tính là tương tác với khung 3D (xem `onPipDragStart` + `stopPropagation`
+// trên nút thoát trong template, để không vô tình gọi `cinemaInterrupted`).
+.farm-cinema-pip-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2rem;
+  z-index: 21; // trên khung 3D (farm-canvas-host) và nút điều khiển canvas
+  background: rgba(33, 37, 41, 0.85);
+  color: #fff;
+  cursor: grab;
+  touch-action: none; // cử chỉ kéo trên thanh handle không cuộn trang (cảm ứng)
+  border-radius: 0.5rem 0.5rem 0 0;
+  user-select: none;
+  -webkit-user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.farm-cinema-exit {
+  z-index: 22;
+}
+
+// Vị trí HUD thay thế khi Cinema_Mode đang chạy — `.farm-stage` gốc đã tách thành PiP nổi
+// (position: fixed) nên HUD cần một khung chứa riêng, nằm trong flow bình thường của
+// trang, có chiều cao tối thiểu để các chip (số dư, kho, hộp thư...) không bị dồn chữ.
+.farm-stage-hud-anchor {
+  min-height: 3.5rem;
+}
+
+.farm-canvas-host {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #e8f6ff 0%, #f1faf4 60%, #e3f2e6 100%);
+  touch-action: none; // cử chỉ trên khung 3D không cuộn trang (US-38)
+}
+
+// Thanh công cụ chính (check-in, Cây OCB, cửa hàng, kho, mở rộng đất, xếp hạng, ghé
+// thăm, thao tác hàng loạt cho ăn/tưới/thu hoạch tất cả) dùng `.btn-sm` để vừa một
+// dòng trên màn hình rộng; trên điện thoại cần đạt vùng chạm tối thiểu 44 px (US-38).
+// `flex-wrap` ở template đã đảm bảo không cần cuộn ngang để thấy hết nút.
+.card-header .btn {
+  @media (max-width: 767.98px) {
+    min-height: 44px;
+  }
+}

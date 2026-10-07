@@ -1,0 +1,5 @@
+// Nút chọn khoá cảnh / chất lượng đồ hoạ đóng vai trò radio — đảm bảo vùng chạm tối
+// thiểu 44×44 px trên di động dù dùng `.btn-sm` (US-36, US-38).
+[role='radiogroup'] .btn {
+  min-height: 44px;
+}

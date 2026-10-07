@@ -1,0 +1,140 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="farm-checkin-dialog"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-calendar-check me-2 text-success" aria-hidden="true"></i>Check-in hằng ngày
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          aria-label="Đóng hộp thưởng check-in"
+          [disabled]="claiming()"
+          (click)="close()"
+        ></button>
+      </div>
+
+      <div class="modal-body text-center">
+        @if (claimed()) {
+          <!-- Đã check-in hôm nay: hiển thị mốc làm mới 00:00 UTC+7 (US-25). -->
+          <div data-testid="checkin-claimed-state" role="status" aria-live="polite">
+            <i class="bi bi-check-circle-fill text-success display-4" aria-hidden="true"></i>
+            <p class="fs-5 fw-semibold mt-2 mb-1">Bạn đã check-in hôm nay</p>
+            @if (receivedReward(); as r) {
+              <p class="mb-1">
+                Đã nhận <strong class="text-success">+{{ r }} Hạt OCB</strong>
+              </p>
+            }
+            <p class="mb-1">
+              Chuỗi hiện tại: <strong data-testid="checkin-streak">{{ streak() }} ngày</strong>
+            </p>
+            <p class="text-muted small mb-0" data-testid="checkin-reset">
+              <i class="bi bi-clock me-1" aria-hidden="true"></i>Làm mới lúc {{ resetLabel() }}
+            </p>
+          </div>
+        } @else {
+          <div class="mb-3">
+            <div class="text-muted small">Phần thưởng hôm nay</div>
+            <div class="display-6 fw-bold text-success" data-testid="checkin-reward">
+              +{{ totalReward() }} <span class="fs-5">Hạt OCB</span>
+            </div>
+            @if (bonus() > 0) {
+              <span class="badge text-bg-warning" data-testid="checkin-bonus">
+                <i class="bi bi-trophy me-1" aria-hidden="true"></i>Gồm {{ bonus() }} Hạt OCB thưởng mốc
+                {{ nextStreak() }} ngày
+              </span>
+            }
+          </div>
+
+          <div class="d-flex justify-content-center gap-3 mb-3">
+            <div class="border rounded px-3 py-2">
+              <div class="text-muted small">Chuỗi hiện tại</div>
+              <div class="fs-5 fw-semibold" data-testid="checkin-streak">
+                <i class="bi bi-fire text-danger me-1" aria-hidden="true"></i>{{ streak() }} ngày
+              </div>
+            </div>
+            <div class="border rounded px-3 py-2">
+              <div class="text-muted small">Sau khi nhận</div>
+              <div class="fs-5 fw-semibold">{{ nextStreak() }} ngày</div>
+            </div>
+          </div>
+
+          @if (streakBroken()) {
+            <p class="small text-warning-emphasis mb-2">
+              <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Bạn đã bỏ lỡ ít nhất một ngày nên
+              chuỗi sẽ bắt đầu lại từ 1.
+            </p>
+          }
+        }
+
+        <!-- Tiến độ tới mốc thưởng kế tiếp (3/7/14/30 ngày, sau đó mỗi 30 ngày). -->
+        <div class="mt-3 text-start">
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span>Mốc thưởng kế tiếp: {{ nextMilestone().target }} ngày</span>
+            <span>còn {{ nextMilestone().remaining }} ngày</span>
+          </div>
+          <div
+            class="progress"
+            role="progressbar"
+            aria-label="Tiến độ tới mốc chuỗi kế tiếp"
+            [attr.aria-valuenow]="nextMilestone().percent"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            style="height: 0.5rem"
+          >
+            <div class="progress-bar bg-success" [style.width.%]="nextMilestone().percent"></div>
+          </div>
+        </div>
+
+        @if (error(); as err) {
+          <div class="alert alert-danger d-flex align-items-start gap-2 mt-3 mb-0 text-start" role="alert" data-testid="checkin-error">
+            <i class="bi bi-exclamation-circle mt-1" aria-hidden="true"></i>
+            <div>
+              <div>{{ err }}</div>
+              @if (!claimed()) {
+                <div class="small">Số Hạt OCB và chuỗi ngày của bạn không thay đổi. Bạn có thể thử lại.</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        @if (claimed()) {
+          <button type="button" class="btn btn-success" data-testid="checkin-done" (click)="close()">
+            Vào nông trại
+          </button>
+        } @else {
+          <button type="button" class="btn btn-outline-secondary" [disabled]="claiming()" (click)="close()">
+            Để sau
+          </button>
+          <button
+            type="button"
+            class="btn btn-success"
+            data-testid="checkin-claim"
+            [disabled]="claimDisabled()"
+            [attr.aria-busy]="claiming()"
+            (click)="onClaim()"
+          >
+            @if (claiming()) {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang nhận...
+            } @else if (error()) {
+              <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Thử lại
+            } @else {
+              <i class="bi bi-gift me-1" aria-hidden="true"></i>Nhận thưởng
+            }
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,100 @@
+@let c = content();
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="farm-confirm-dialog"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="{{ c.icon }} me-2 text-success" aria-hidden="true"></i>{{ c.title }}
+        </h5>
+        <button type="button" class="btn-close" aria-label="Đóng" [disabled]="busy()" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        @if (result(); as r) {
+          <div
+            class="alert mb-2"
+            [class.alert-success]="r.level === 'success'"
+            [class.alert-warning]="r.level === 'warning'"
+            role="status"
+            aria-live="polite"
+            data-testid="farm-confirm-result"
+          >
+            {{ r.message }}
+          </div>
+          @if (r.rows.length > 0) {
+            <table class="table table-sm mb-0">
+              <tbody>
+                @for (row of r.rows; track row.label) {
+                  <tr>
+                    <th scope="row" class="fw-normal">{{ row.label }}</th>
+                    <td class="text-end fw-semibold">{{ row.value }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        } @else {
+          @if (c.message) {
+            <p class="mb-2">{{ c.message }}</p>
+          }
+          @if (c.rows.length > 0) {
+            <table class="table table-sm mb-2" data-testid="farm-confirm-rows">
+              <tbody>
+                @for (row of c.rows; track row.label) {
+                  <tr>
+                    <th scope="row" class="fw-normal">{{ row.label }}</th>
+                    <td class="text-end fw-semibold">{{ row.value }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+          @if (c.warning) {
+            <div class="alert alert-warning py-2 mb-0 small" role="note" data-testid="farm-confirm-warning">
+              <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>{{ c.warning }}
+            </div>
+          }
+        }
+
+        @if (error(); as err) {
+          <div class="alert alert-danger py-2 mt-2 mb-0 small" role="alert" data-testid="farm-confirm-error">
+            <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ err }}
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        @if (result()) {
+          <button type="button" class="btn btn-success" (click)="close()">Đóng</button>
+        } @else {
+          <button type="button" class="btn btn-outline-secondary" [disabled]="busy()" (click)="close()">Huỷ</button>
+          <button
+            type="button"
+            class="btn"
+            [class.btn-danger]="c.danger"
+            [class.btn-success]="!c.danger"
+            data-testid="farm-confirm-ok"
+            [disabled]="busy() || !canConfirm()"
+            [attr.aria-busy]="busy()"
+            (click)="onConfirm()"
+          >
+            @if (busy()) {
+              <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Đang thực hiện...
+            } @else {
+              {{ c.confirmLabel }}
+            }
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</div>

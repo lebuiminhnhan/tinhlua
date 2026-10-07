@@ -1,0 +1,31 @@
+// Overlay phủ toàn khung 3D. Mặc định không chặn thao tác (chỉ thông báo lỗi ở góc dưới
+// nhận click); khi đang tải / lỗi chặn thì phủ nền mờ và nhận toàn bộ thao tác.
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 20; // trên HUD (z-index 10) để màn hình chặn che cả HUD
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+:host(.farm-loading-overlay--blocking) {
+  pointer-events: auto;
+  background: rgba(var(--bs-body-bg-rgb), 0.85);
+}
+
+.farm-loading-panel {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.farm-failure-notice {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  // Chừa mép phải cho cụm nút điều khiển khung 3D (`farm-canvas`) để không che vùng chạm (US-38).
+  max-width: min(26rem, calc(100% - 9rem));
+  pointer-events: auto;
+}

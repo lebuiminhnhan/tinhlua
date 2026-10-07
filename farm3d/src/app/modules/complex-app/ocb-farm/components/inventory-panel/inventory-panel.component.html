@@ -1,0 +1,323 @@
+<div class="modal-backdrop fade show" aria-hidden="true"></div>
+<div
+  #dialog
+  class="modal fade show d-block"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId"
+  tabindex="-1"
+  data-testid="inventory-panel"
+>
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" [id]="titleId">
+          <i class="bi bi-box-seam me-2 text-success" aria-hidden="true"></i>Kho sản phẩm
+        </h5>
+        <span class="badge text-bg-success ms-auto me-2" data-testid="inventory-balance">
+          <i class="bi bi-coin me-1" aria-hidden="true"></i>{{ balanceLabel() }} Hạt OCB
+        </span>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary me-2"
+          aria-label="Làm mới kho"
+          title="Làm mới kho"
+          data-testid="inventory-refresh"
+          [disabled]="refreshing()"
+          [attr.aria-busy]="refreshing()"
+          (click)="requestRefresh()"
+        >
+          @if (refreshing()) {
+            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          } @else {
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+          }
+        </button>
+        <button type="button" class="btn-close ms-0" aria-label="Đóng kho" (click)="close()"></button>
+      </div>
+
+      <div class="modal-body">
+        @if (notice()) {
+          <div class="alert alert-info small" role="status" data-testid="inventory-notice">
+            <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>{{ notice() }}
+          </div>
+        }
+        @if (configMissing()) {
+          <div class="alert alert-warning small" role="alert">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+            Chưa tải được bảng giá nên chưa thể bán. Vui lòng tải lại nông trại.
+          </div>
+        }
+
+        @if (isEmpty()) {
+          <div class="text-center py-4" data-testid="inventory-empty">
+            <i class="bi bi-inbox fs-1 text-muted d-block mb-2" aria-hidden="true"></i>
+            <p class="fw-semibold mb-1">Kho đang trống</p>
+            <p class="text-muted small mb-3">Thu hoạch sản phẩm để có hàng bán lấy Hạt OCB:</p>
+            <ul class="list-unstyled small text-start d-inline-block mb-0">
+              @for (tip of emptyTips; track tip.text) {
+                <li class="mb-1">
+                  <i class="{{ tip.icon }} text-success me-2" aria-hidden="true"></i>{{ tip.text }}
+                </li>
+              }
+            </ul>
+          </div>
+        } @else {
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small">
+            <span class="badge text-bg-light border" data-testid="inventory-count">
+              <i class="bi bi-box-seam me-1" aria-hidden="true"></i>Đang chứa {{ storageCount() }}
+              @if (storageMax() !== null) {
+                / {{ storageMax() }}
+              }
+            </span>
+            @if (horse().reason === 'active') {
+              <span class="badge text-bg-info" data-testid="inventory-horse-badge">
+                <i class="bi bi-trophy me-1" aria-hidden="true"></i>Thưởng ngựa +{{ horse().percent }}%
+                ({{ horse().normalHorses }} ngựa)
+                @if (horse().capped) {
+                  · đã đạt trần
+                }
+              </span>
+            }
+          </div>
+
+          <!-- Màn hình ≥ md: bảng đầy đủ. Dưới md: xếp dạng thẻ để không cần cuộn ngang (US-38). -->
+          <div class="table-responsive d-none d-md-block">
+            <table class="table table-hover align-middle mb-0" aria-describedby="inventory-table-caption">
+              <caption id="inventory-table-caption" class="visually-hidden">
+                Danh sách sản phẩm trong kho, chọn một dòng để bán
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Sản phẩm</th>
+                  <th scope="col" class="text-end">Số lượng</th>
+                  <th scope="col" class="text-end">Giá / đơn vị</th>
+                  <th scope="col" class="text-end">Ước tính bán hết</th>
+                  <th scope="col" class="text-end"><span class="visually-hidden">Thao tác</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of rowViews(); track row.key) {
+                  <tr
+                    [class.table-success]="selectedKey() === row.key"
+                    [attr.data-testid]="'inventory-row-' + row.key"
+                  >
+                    <td>
+                      <i class="{{ row.icon }} text-success me-2" aria-hidden="true"></i>{{ row.label }}
+                    </td>
+                    <td class="text-end fw-semibold">{{ row.quantity }}</td>
+                    <td class="text-end">{{ row.unitLabel }}</td>
+                    <td class="text-end">{{ row.estimateLabel }}</td>
+                    <td class="text-end">
+                      <button
+                        type="button"
+                        class="btn btn-sm"
+                        [class.btn-success]="selectedKey() === row.key"
+                        [class.btn-outline-success]="selectedKey() !== row.key"
+                        [attr.aria-pressed]="selectedKey() === row.key"
+                        [attr.aria-label]="'Bán ' + row.label"
+                        [attr.data-testid]="'inventory-select-' + row.key"
+                        (click)="select(row.key)"
+                      >
+                        <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>Bán
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr class="fw-semibold">
+                  <td colspan="3">Tổng giá trị ước tính nếu bán toàn bộ kho</td>
+                  <td class="text-end" data-testid="inventory-total">{{ totalLabels().total }}</td>
+                  <td></td>
+                </tr>
+                @if (total().bonus > 0) {
+                  <tr class="small text-muted">
+                    <td colspan="5" class="text-end">
+                      Gồm {{ totalLabels().base }} giá gốc + {{ totalLabels().bonus }} thưởng ngựa
+                    </td>
+                  </tr>
+                }
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="d-md-none" role="list" aria-label="Danh sách sản phẩm trong kho, chọn một thẻ để bán">
+            @for (row of rowViews(); track row.key) {
+              <div
+                class="card mb-2"
+                role="listitem"
+                [class.border-success]="selectedKey() === row.key"
+                [attr.data-testid]="'inventory-row-' + row.key"
+              >
+                <div class="card-body p-2 d-flex align-items-center gap-2">
+                  <i class="{{ row.icon }} text-success fs-4" aria-hidden="true"></i>
+                  <div class="flex-grow-1 min-w-0">
+                    <div class="fw-semibold">{{ row.label }}</div>
+                    <div class="small text-muted">
+                      Số lượng {{ row.quantity }} · {{ row.unitLabel }}/đơn vị · Ước tính {{ row.estimateLabel }}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-sm"
+                    [class.btn-success]="selectedKey() === row.key"
+                    [class.btn-outline-success]="selectedKey() !== row.key"
+                    [attr.aria-pressed]="selectedKey() === row.key"
+                    [attr.aria-label]="'Bán ' + row.label"
+                    [attr.data-testid]="'inventory-select-mobile-' + row.key"
+                    (click)="select(row.key)"
+                  >
+                    <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>Bán
+                  </button>
+                </div>
+              </div>
+            }
+            <div class="small text-muted d-flex justify-content-between border-top pt-2">
+              <span>Tổng giá trị ước tính nếu bán toàn bộ kho</span>
+              <span class="fw-semibold text-body" data-testid="inventory-total-mobile">{{ totalLabels().total }}</span>
+            </div>
+            @if (total().bonus > 0) {
+              <div class="small text-muted text-end">
+                Gồm {{ totalLabels().base }} giá gốc + {{ totalLabels().bonus }} thưởng ngựa
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer d-block" data-testid="inventory-sell-area">
+        @if (selected(); as row) {
+          @if (sellError()) {
+            <div class="alert alert-danger small mb-2" role="alert" data-testid="inventory-sell-error">
+              <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{{ sellError() }}
+            </div>
+          }
+
+          <div class="row g-3 align-items-start">
+            <div class="col-md-5">
+              <label class="form-label small mb-1" [for]="qtyInputId">
+                Số lượng {{ row.label }} muốn bán
+              </label>
+              <div class="input-group input-group-sm">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  aria-label="Giảm 1"
+                  (click)="step(-1)"
+                >
+                  <i class="bi bi-dash" aria-hidden="true"></i>
+                </button>
+                <input
+                  #qty
+                  type="number"
+                  inputmode="numeric"
+                  class="form-control text-center"
+                  min="1"
+                  step="1"
+                  [max]="row.quantity"
+                  [id]="qtyInputId"
+                  [value]="quantityText()"
+                  [class.is-invalid]="quantityError() !== null"
+                  [attr.aria-invalid]="quantityError() !== null"
+                  [attr.aria-describedby]="qtyHelpId"
+                  data-testid="inventory-qty"
+                  (input)="setQuantity(qty.value)"
+                  (keydown.enter)="confirm()"
+                />
+                <button type="button" class="btn btn-outline-secondary" aria-label="Tăng 1" (click)="step(1)">
+                  <i class="bi bi-plus" aria-hidden="true"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-success"
+                  data-testid="inventory-sell-all"
+                  [class.active]="isSellAll()"
+                  [attr.aria-pressed]="isSellAll()"
+                  (click)="sellAll()"
+                >
+                  Bán toàn bộ
+                </button>
+              </div>
+              <div
+                [id]="qtyHelpId"
+                class="small mt-1"
+                [class.text-danger]="quantityError() !== null"
+                [class.text-muted]="quantityError() === null"
+                aria-live="polite"
+              >
+                {{ quantityError() ?? 'Từ 1 đến ' + row.quantity + ' (đang có).' }}
+              </div>
+            </div>
+
+            <div class="col-md-7">
+              @if (previewLabels(); as p) {
+                <dl class="row small mb-1" data-testid="inventory-preview" aria-live="polite">
+                  <dt class="col-7 fw-normal">Giá bán gốc</dt>
+                  <dd class="col-5 text-end mb-1" data-testid="inventory-preview-base">{{ p.base }}</dd>
+                  <dt class="col-7 fw-normal">
+                    Thưởng ngựa
+                    @if (horse().reason === 'active') {
+                      (+{{ horse().percent }}%)
+                    }
+                  </dt>
+                  <dd class="col-5 text-end mb-1" data-testid="inventory-preview-bonus">+{{ p.bonus }}</dd>
+                  <dt class="col-7 border-top pt-1">Tổng nhận được</dt>
+                  <dd class="col-5 text-end border-top pt-1 fw-bold text-success mb-0" data-testid="inventory-preview-total">
+                    {{ p.total }} Hạt OCB
+                  </dd>
+                </dl>
+                <div class="small text-muted">Số dư sau khi bán: {{ p.balanceAfter }} Hạt OCB</div>
+              } @else if (row.unitPrice === null) {
+                <div class="small text-warning">Chưa có giá bán cho sản phẩm này.</div>
+              }
+              @if (horseReason(); as reason) {
+                <div class="small text-muted mt-1" data-testid="inventory-horse-reason">
+                  <i class="bi bi-info-circle me-1" aria-hidden="true"></i>{{ reason }}
+                </div>
+              } @else if (horse().capped) {
+                <div class="small text-muted mt-1">
+                  <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Thưởng ngựa đã đạt trần
+                  {{ horse().maxPercent }}%, mua thêm ngựa không tăng thêm.
+                </div>
+              }
+              <div class="small text-muted mt-1">Giá được chốt tại thời điểm xác nhận bán.</div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cancelSelection()">Huỷ</button>
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              data-testid="inventory-confirm"
+              [disabled]="confirmDisabled()"
+              [attr.aria-busy]="selling()"
+              (click)="confirm()"
+            >
+              @if (selling()) {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+              } @else {
+                <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>
+              }
+              Xác nhận bán
+            </button>
+          </div>
+        } @else {
+          <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted me-auto">
+              @if (isEmpty()) {
+                Chưa có sản phẩm để bán.
+              } @else {
+                Chọn "Bán" ở một dòng để chọn số lượng.
+              }
+            </span>
+            <button type="button" class="btn btn-success btn-sm" disabled data-testid="inventory-confirm">
+              <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>Xác nhận bán
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

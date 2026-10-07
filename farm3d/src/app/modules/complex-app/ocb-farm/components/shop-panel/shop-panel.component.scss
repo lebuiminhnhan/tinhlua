@@ -1,0 +1,17 @@
+.shop-item {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-in-out;
+
+  &:hover,
+  &:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(0, 158, 86, 0.25);
+  }
+}
+
+.shop-item-selected {
+  box-shadow: 0 0 0 0.2rem rgba(0, 158, 86, 0.4);
+}
+
+.min-w-0 {
+  min-width: 0;
+}

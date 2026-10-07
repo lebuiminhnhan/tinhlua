@@ -1,0 +1,25 @@
+// Menu nổi gần điểm chạm trên khung 3D; màn hình hẹp → tấm dưới đáy.
+.entity-action-menu {
+  position: fixed;
+  z-index: 1040;
+  width: 300px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+
+.entity-action-btn {
+  min-height: 44px;
+}
+
+@media (max-width: 575.98px) {
+  .entity-action-menu {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: auto;
+    max-height: 70vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
